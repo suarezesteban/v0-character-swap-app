@@ -124,8 +124,9 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     timerRef.current = setInterval(() => {
       setRecordingTime((prev) => {
-        if (prev >= 30) {
-          // Stop recording at 30 seconds
+        // Stop at 29 seconds to ensure final video is ~30s max (MediaRecorder adds slight delay)
+        if (prev >= 29) {
+          // Stop recording
           if (mediaRecorderRef.current?.state === "recording") {
             mediaRecorderRef.current.stop()
           }
@@ -134,7 +135,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
             clearInterval(timerRef.current)
             timerRef.current = null
           }
-          return 30
+          return 30 // Display as 30 for user
         }
         return prev + 1
       })
@@ -252,19 +253,21 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
         {isRecording && (
           <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-black/40 px-2.5 py-1.5 backdrop-blur-sm md:left-4 md:top-4">
-            <span className={`h-2 w-2 rounded-full ${recordingTime >= 25 ? "bg-amber-500" : "bg-red-500"} animate-pulse`} />
-            <span className={`font-mono text-[11px] tabular-nums md:text-xs ${recordingTime >= 25 ? "text-amber-400" : "text-white"}`}>
+            <span className={`h-2 w-2 rounded-full ${recordingTime >= 24 ? "bg-amber-500" : "bg-red-500"} animate-pulse`} />
+            <span className={`font-mono text-[11px] tabular-nums md:text-xs ${recordingTime >= 24 ? "text-amber-400" : "text-white"}`}>
               {recordingTime}/30s
             </span>
           </div>
         )}
         
-        {/* Warning when approaching max time */}
-        {isRecording && recordingTime >= 25 && (
-          <div className="absolute left-1/2 top-14 -translate-x-1/2 animate-pulse rounded-full bg-amber-500/90 px-3 py-1.5 backdrop-blur-sm md:top-16">
-            <span className="font-sans text-[11px] font-medium text-black md:text-xs">
-              {30 - recordingTime}s remaining
-            </span>
+        {/* Warning when approaching max time - show last 5 seconds */}
+        {isRecording && recordingTime >= 24 && (
+          <div className="absolute inset-x-0 top-14 flex justify-center md:top-16">
+            <div className="animate-pulse rounded-lg bg-amber-500 px-4 py-2 shadow-lg">
+              <span className="font-mono text-[13px] font-semibold text-black">
+                {Math.max(1, 29 - recordingTime)}s left
+              </span>
+            </div>
           </div>
         )}
 
