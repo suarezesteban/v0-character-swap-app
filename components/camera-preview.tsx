@@ -261,10 +261,12 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         
         {/* Warning when approaching max time */}
         {isRecording && recordingTime >= 25 && (
-          <div className="absolute left-1/2 top-14 -translate-x-1/2 animate-pulse rounded-full bg-amber-500/90 px-3 py-1.5 backdrop-blur-sm md:top-16">
-            <span className="font-sans text-[11px] font-medium text-black md:text-xs">
-              {30 - recordingTime}s remaining
-            </span>
+          <div className="absolute inset-x-0 top-14 flex justify-center md:top-16">
+            <div className="animate-pulse rounded-lg bg-amber-500 px-4 py-2 shadow-lg">
+              <span className="font-mono text-[13px] font-semibold text-black">
+                {30 - recordingTime}s left
+              </span>
+            </div>
           </div>
         )}
 
