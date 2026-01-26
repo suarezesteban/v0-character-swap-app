@@ -26,6 +26,7 @@ export default function Home() {
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
   const [emailSent] = useState(false)
+  const [showCharacterOverlay, setShowCharacterOverlay] = useState(false)
 
   // Custom hooks
   const {
@@ -122,6 +123,7 @@ export default function Home() {
     setResultUrl(null)
     setSelectedCharacter(null)
     setSelectedGeneratedVideo(null)
+    setShowCharacterOverlay(false)
   }, [clearRecording, setSelectedCharacter])
 
   const handleLoginAndContinue = useCallback(async () => {
@@ -265,27 +267,111 @@ export default function Home() {
             <div className="relative aspect-[9/16] h-full max-h-[80vh] w-full max-w-sm overflow-hidden rounded-2xl bg-neutral-900">
               <video 
                 src={recordedVideoUrl} 
-                controls 
                 autoPlay 
                 muted
                 loop 
                 playsInline
                 className="h-full w-full object-cover" 
                 onLoadedData={(e) => {
-                  // Unmute after autoplay starts
                   const video = e.currentTarget
                   video.muted = false
                 }}
               />
-              <button
-                onClick={() => {
-                  setShowPreview(false)
-                  clearRecording()
-                }}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-5 py-2.5 font-sans text-[13px] font-medium text-white backdrop-blur-md transition-all hover:bg-black/60 active:scale-95"
-              >
-                Re-record
-              </button>
+              
+              {/* Character Selection Overlay */}
+              {showCharacterOverlay && (
+                <div className="absolute inset-0 flex flex-col bg-black/80 backdrop-blur-sm">
+                  {/* Back button */}
+                  <div className="flex items-center justify-between p-4">
+                    <button
+                      onClick={() => setShowCharacterOverlay(false)}
+                      className="flex items-center gap-1.5 font-mono text-[11px] text-neutral-400 transition-colors hover:text-white"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      back
+                    </button>
+                    {isUploading && (
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                        <span className="font-mono text-[10px] text-neutral-400">uploading...</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Character grid */}
+                  <div className="flex-1 overflow-y-auto px-4">
+                    <p className="mb-3 font-mono text-[11px] lowercase text-neutral-500">
+                      select character
+                    </p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[...visibleDefaultCharacters, ...customCharacters].map((char) => (
+                        <button
+                          key={char.id}
+                          onClick={() => setSelectedCharacter(char.id)}
+                          className={`relative aspect-[3/4] w-full overflow-hidden rounded-lg transition-all ${
+                            selectedCharacter === char.id 
+                              ? "ring-2 ring-white" 
+                              : "ring-1 ring-neutral-700 hover:ring-neutral-500"
+                          }`}
+                        >
+                          <Image
+                            src={char.src || "/placeholder.svg"}
+                            alt={char.name}
+                            fill
+                            className="object-cover"
+                            sizes="80px"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Generate button */}
+                  <div className="p-4">
+                    <button
+                      onClick={handleProcess}
+                      disabled={!selectedCharacter || isUploading}
+                      className="flex h-12 w-full items-center justify-center rounded-full bg-white font-sans text-[14px] font-semibold text-black transition-all hover:bg-neutral-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isUploading ? (
+                        <>
+                          <svg className="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Uploading video...
+                        </>
+                      ) : (
+                        "Generate"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Initial buttons: Re-record and Select Character */}
+              {!showCharacterOverlay && (
+                <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-3">
+                  <button
+                    onClick={() => {
+                      setShowPreview(false)
+                      clearRecording()
+                      setShowCharacterOverlay(false)
+                    }}
+                    className="rounded-full bg-black/50 px-5 py-2.5 font-sans text-[13px] font-medium text-white backdrop-blur-md transition-all hover:bg-black/60 active:scale-95"
+                  >
+                    Re-record
+                  </button>
+                  <button
+                    onClick={() => setShowCharacterOverlay(true)}
+                    className="rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black transition-all hover:bg-neutral-200 active:scale-95"
+                  >
+                    Select Character
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -296,14 +382,15 @@ export default function Home() {
         )}
       </div>
 
-      {/* Desktop Sidebar */}
-      {!isMobile && (
+      {/* Desktop Sidebar - hide when video is recorded (selection is on camera overlay) */}
+      {!isMobile && !recordedVideoUrl && (
         <div className="flex h-full w-96 flex-col border-l border-neutral-800 bg-neutral-950 p-5">
           {renderAuthSection("desktop")}
           <div className="min-h-0 flex-1">
 <CharacterGrid
                 selectedId={selectedCharacter}
                 onSelect={setSelectedCharacter}
+                disabled={false}
                 customCharacters={customCharacters}
                 onAddCustom={addCustomCharacter}
                 onDeleteCustom={deleteCustomCharacter}
@@ -323,8 +410,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Mobile Bottom Sheet */}
-      {isMobile && (
+      {/* Mobile Bottom Sheet - hide when video is recorded (selection is on camera overlay) */}
+      {isMobile && !recordedVideoUrl && (
         <BottomSheet
           isExpanded={bottomSheetExpanded}
           onExpandedChange={setBottomSheetExpanded}
@@ -368,6 +455,7 @@ export default function Home() {
               <CharacterGrid
                 selectedId={selectedCharacter}
                 onSelect={setSelectedCharacter}
+                disabled={false}
                 customCharacters={customCharacters}
                 onAddCustom={addCustomCharacter}
                 onDeleteCustom={deleteCustomCharacter}
