@@ -300,7 +300,7 @@ export default function Home() {
             isProcessing={false}
             // Character selection props
             recordedVideoUrl={recordedVideoUrl}
-            showCharacterSelection={!!recordedVideoUrl && isMobile}
+            showCharacterSelection={!!recordedVideoUrl}
             characters={visibleDefaultCharacters}
             customCharacters={customCharacters}
             selectedCharacter={selectedCharacter}
@@ -314,8 +314,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* Desktop Sidebar */}
-      {!isMobile && (
+      {/* Desktop Sidebar - hide when video is recorded (selection happens in camera view) */}
+      {!isMobile && !recordedVideoUrl && (
         <div className="flex h-full w-96 flex-col border-l border-neutral-800 bg-neutral-950 p-5">
           {renderAuthSection("desktop")}
           <div className="min-h-0 flex-1">

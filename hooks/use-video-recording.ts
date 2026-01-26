@@ -53,8 +53,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   }, [])
 
   const handleVideoRecorded = useCallback((blob: Blob) => {
-    console.log("[v0] handleVideoRecorded called with blob size:", blob.size)
-    
     // Validate file size
     if (blob.size > MAX_VIDEO_SIZE) {
       alert("Video is too large. Please record a shorter video (max 50MB).")
@@ -66,7 +64,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     video.preload = "metadata"
     
     video.onloadedmetadata = () => {
-      console.log("[v0] Video metadata loaded, duration:", video.duration)
       URL.revokeObjectURL(video.src)
       
       // Use Math.floor for min check and Math.ceil for max check to be more permissive
@@ -74,27 +71,23 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       const durationSeconds = Math.round(video.duration)
       
       if (durationSeconds < MIN_VIDEO_DURATION) {
-        console.log("[v0] Video too short:", durationSeconds)
         alert(`Video is too short (${durationSeconds}s). Please record between 3-30 seconds.`)
         return
       }
       
       // Allow up to 31 seconds to account for timing variations
       if (video.duration > MAX_VIDEO_DURATION + 1) {
-        console.log("[v0] Video too long:", durationSeconds)
         alert(`Video is too long (${durationSeconds}s). Please record between 3-30 seconds.`)
         return
       }
       
-      console.log("[v0] Video accepted, setting recordedVideo")
       setRecordedVideo(blob)
       setShowPreview(true)
       // Start uploading immediately in background
       uploadVideo(blob)
     }
     
-    video.onerror = (e) => {
-      console.log("[v0] Video error loading metadata:", e)
+    video.onerror = () => {
       URL.revokeObjectURL(video.src)
       // Still accept the video if we can't validate duration
       setRecordedVideo(blob)
