@@ -1,11 +1,53 @@
 "use client"
 
-import React, { useEffect } from "react"
+import React, { useEffect, useRef, useCallback } from "react"
 import Image from "next/image"
 import useSWR from "swr"
 import { FailedGeneration } from "@/components/failed-generation"
 import { GenerationProgress } from "@/components/generation-progress"
 import { useAuth } from "@/components/auth-provider"
+
+// Request notification permission
+async function requestNotificationPermission(): Promise<boolean> {
+  if (!("Notification" in window)) {
+    return false
+  }
+  
+  if (Notification.permission === "granted") {
+    return true
+  }
+  
+  if (Notification.permission !== "denied") {
+    const permission = await Notification.requestPermission()
+    return permission === "granted"
+  }
+  
+  return false
+}
+
+// Show notification when video is ready
+function showVideoReadyNotification(characterName: string | null) {
+  if (!("Notification" in window) || Notification.permission !== "granted") {
+    return
+  }
+  
+  const notification = new Notification("Video Ready!", {
+    body: characterName 
+      ? `Your ${characterName} video is ready to view`
+      : "Your video generation is complete",
+    icon: "/favicon.ico",
+    tag: "video-ready", // Prevents duplicate notifications
+  })
+  
+  // Auto-close after 5 seconds
+  setTimeout(() => notification.close(), 5000)
+  
+  // Focus window when clicked
+  notification.onclick = () => {
+    window.focus()
+    notification.close()
+  }
+}
 
 interface Generation {
   id: number
@@ -27,6 +69,8 @@ const fetcher = (url: string) => fetch(url).then(res => res.json())
 
 export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsPanelProps) {
   const { user } = useAuth()
+  const prevGenerationsRef = useRef<Generation[]>([])
+  const hasRequestedPermission = useRef(false)
   
   const { data, isLoading, mutate } = useSWR(
     user?.id ? "/api/generations" : null,
@@ -39,6 +83,33 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
   
   const generations: Generation[] = data?.generations || []
   const hasPending = generations.some(g => g.status === "uploading" || g.status === "pending" || g.status === "processing")
+
+  // Request notification permission when there's a pending generation
+  useEffect(() => {
+    if (hasPending && !hasRequestedPermission.current) {
+      hasRequestedPermission.current = true
+      requestNotificationPermission()
+    }
+  }, [hasPending])
+
+  // Detect when a generation completes and show notification
+  useEffect(() => {
+    const prevGenerations = prevGenerationsRef.current
+    
+    // Check if any generation just completed
+    for (const gen of generations) {
+      if (gen.status === "completed") {
+        const prevGen = prevGenerations.find(p => p.id === gen.id)
+        if (prevGen && prevGen.status !== "completed") {
+          // This generation just completed!
+          showVideoReadyNotification(gen.character_name)
+        }
+      }
+    }
+    
+    // Update ref for next comparison
+    prevGenerationsRef.current = generations
+  }, [generations])
 
   // Poll only when there are pending generations
   useSWR(
