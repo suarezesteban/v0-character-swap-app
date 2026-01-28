@@ -23,7 +23,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   const [countdown, setCountdown] = useState<number | null>(null)
   const [showFlash, setShowFlash] = useState(false)
   const [showTips, setShowTips] = useState(true)
-  const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
+  const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9" | "fill">("9:16")
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const isStartingRef = useRef(false)
@@ -267,10 +267,10 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
                   For best results
                 </p>
                 <p className="font-mono text-[13px] leading-relaxed text-neutral-300">
-                  <span className="text-white">1.</span> <span className="font-semibold text-white">Keep moving</span> — the AI needs continuous motion
+                  <span className="text-white">1.</span> <span className="font-semibold text-white">Show head + upper body</span> clearly
                 </p>
                 <p className="font-mono text-[13px] leading-relaxed text-neutral-300">
-                  <span className="text-white">2.</span> Talk, gesture, turn your head
+                  <span className="text-white">2.</span> <span className="font-semibold text-white">Keep moving</span> — talk, gesture, turn head
                 </p>
                 <p className="font-mono text-[13px] leading-relaxed text-neutral-300">
                   <span className="text-white">3.</span> Good lighting on your face
@@ -294,23 +294,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
         {/* Aspect ratio selector - desktop only, always visible when not recording */}
         {!isRecording && !isProcessing && countdown === null && hasPermission && (
-          <div className="absolute right-3 top-3 z-40 hidden md:flex md:right-4 md:top-4">
+          <div className="absolute right-3 top-3 z-40 hidden flex-col items-end gap-2 md:flex md:right-4 md:top-4">
             <div className="flex rounded-lg bg-black/60 p-1 backdrop-blur-sm">
-              <button
-                onClick={() => setAspectRatio("fill")}
-                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
-                  aspectRatio === "fill" 
-                    ? "bg-white text-black" 
-                    : "text-neutral-400 hover:text-white"
-                }`}
-                title="Fill available space"
-              >
-                <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="1" y="1" width="12" height="12" rx="1" />
-                  <path d="M1 5h12M1 9h12" strokeOpacity="0.4" />
-                </svg>
-                Fill
-              </button>
               <button
                 onClick={() => setAspectRatio("9:16")}
                 className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
@@ -338,6 +323,14 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
                 16:9
               </button>
             </div>
+            {/* Warning for landscape modes */}
+            {aspectRatio === "16:9" && (
+              <div className="rounded-md bg-amber-500/20 px-2.5 py-1.5 backdrop-blur-sm">
+                <p className="font-mono text-[10px] text-amber-400">
+                  Ensure head + upper body are clearly visible
+                </p>
+              </div>
+            )}
           </div>
         )}
 
