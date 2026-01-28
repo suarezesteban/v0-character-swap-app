@@ -205,13 +205,13 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
   return (
     <div className="relative flex h-full w-full items-start justify-center md:items-center">
-      <div className="relative aspect-[9/16] w-full max-w-none overflow-hidden rounded-none bg-neutral-900 md:h-full md:max-h-[80vh] md:max-w-sm md:rounded-2xl">
+      <div className="relative aspect-[9/16] h-full max-h-full w-auto overflow-hidden rounded-none bg-neutral-900 md:max-h-[80vh] md:w-full md:max-w-sm md:rounded-2xl">
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain md:object-cover"
           style={{ transform: "scaleX(-1)" }}
         />
         {/* Hidden canvas for mirrored recording */}
