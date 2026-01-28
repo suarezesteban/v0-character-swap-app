@@ -189,7 +189,7 @@ export default function Home() {
           <div className={`relative flex h-full w-full flex-col gap-4 ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
             <div className={`relative overflow-hidden bg-neutral-900 ${
               recordedAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[70vh] w-auto max-w-sm rounded-2xl"
+                ? "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-2xl"
                 : recordedAspectRatio === "16:9"
                   ? "aspect-video w-full max-w-4xl rounded-2xl"
                   : "h-full w-full flex-1"
@@ -254,7 +254,7 @@ export default function Home() {
           >
             <div className={`relative overflow-hidden bg-neutral-900 ${
               recordedAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[80vh] w-auto max-w-sm rounded-2xl"
+                ? "aspect-[9/16] h-full max-h-[95vh] w-auto rounded-2xl"
                 : recordedAspectRatio === "16:9"
                   ? "aspect-video w-full max-w-4xl rounded-2xl"
                   : "h-full w-full"
