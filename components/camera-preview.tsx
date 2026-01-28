@@ -227,7 +227,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm">
             <div className="flex max-w-[280px] flex-col gap-3">
               <p className="font-mono text-[13px] leading-relaxed text-neutral-300">
-                <span className="text-white">1.</span> Keep your head centered, avoid sudden movements
+                <span className="text-white">1.</span> <span className="font-semibold text-white">Keep moving</span> - talk, gesture, turn your head
               </p>
               <p className="font-mono text-[13px] leading-relaxed text-neutral-300">
                 <span className="text-white">2.</span> Good lighting on your face works best
