@@ -68,10 +68,14 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
 
   // Process the result
   if (falResult.status === "OK" && falResult.payload?.video?.url) {
-    // Download and save to Blob
+    // Create PiP video with original video overlay, then save to Blob
     const blobStartTime = Date.now()
-    const blobUrl = await saveVideoToBlob(generationId, falResult.payload.video.url)
-    console.log(`[Workflow] [${new Date().toISOString()}] saveVideoToBlob took ${Date.now() - blobStartTime}ms`)
+    const blobUrl = await createPipAndSaveToBlob(
+      generationId, 
+      falResult.payload.video.url, 
+      videoUrl // Original video URL for PiP overlay
+    )
+    console.log(`[Workflow] [${new Date().toISOString()}] createPipAndSaveToBlob took ${Date.now() - blobStartTime}ms`)
 
     // Update database
     const dbStartTime = Date.now()
@@ -157,33 +161,43 @@ async function submitToFal(
   return request_id
 }
 
-async function saveVideoToBlob(generationId: number, falVideoUrl: string): Promise<string> {
+async function createPipAndSaveToBlob(
+  generationId: number, 
+  generatedVideoUrl: string, 
+  originalVideoUrl: string
+): Promise<string> {
   "use step"
 
   const stepStartTime = Date.now()
   const { put } = await import("@vercel/blob")
+  const { createPipVideo } = await import("@/lib/video-pip")
 
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Downloading video from fal: ${falVideoUrl}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Creating PiP video...`)
+  console.log(`[Workflow Step] Generated video: ${generatedVideoUrl}`)
+  console.log(`[Workflow Step] Original video (PiP): ${originalVideoUrl}`)
 
-  const fetchStartTime = Date.now()
-  const response = await fetch(falVideoUrl)
-  if (!response.ok) {
-    throw new Error(`Failed to download video: ${response.status}`)
-  }
-  console.log(`[Workflow Step] [${new Date().toISOString()}] fetch() took ${Date.now() - fetchStartTime}ms, status: ${response.status}`)
+  // Create PiP video with original in bottom-right corner
+  const pipStartTime = Date.now()
+  const pipVideoBlob = await createPipVideo(
+    generatedVideoUrl,
+    originalVideoUrl,
+    {
+      pipSizePercent: 25,
+      padding: 20,
+      position: "bottom-right",
+    }
+  )
+  console.log(`[Workflow Step] [${new Date().toISOString()}] PiP creation took ${Date.now() - pipStartTime}ms, size: ${pipVideoBlob.size} bytes`)
 
-  const blobConvertStart = Date.now()
-  const videoBlob = await response.blob()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] response.blob() took ${Date.now() - blobConvertStart}ms, size: ${videoBlob.size} bytes`)
-
+  // Upload to Vercel Blob
   const putStartTime = Date.now()
-  const { url } = await put(`generations/${generationId}-${Date.now()}.mp4`, videoBlob, {
+  const { url } = await put(`generations/${generationId}-${Date.now()}.mp4`, pipVideoBlob, {
     access: "public",
     contentType: "video/mp4",
   })
   console.log(`[Workflow Step] [${new Date().toISOString()}] put() to Vercel Blob took ${Date.now() - putStartTime}ms`)
 
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Saved to blob: ${url}, total step time: ${Date.now() - stepStartTime}ms`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Saved PiP video to blob: ${url}, total step time: ${Date.now() - stepStartTime}ms`)
   return url
 }
 
