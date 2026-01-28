@@ -23,14 +23,26 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   const [countdown, setCountdown] = useState<number | null>(null)
   const [showFlash, setShowFlash] = useState(false)
   const [showTips, setShowTips] = useState(true)
+  const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9">("9:16")
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const isStartingRef = useRef(false)
 
   const startCamera = useCallback(async () => {
     try {
+      // Stop existing stream if any
+      if (originalStreamRef.current) {
+        originalStreamRef.current.getTracks().forEach(track => track.stop())
+      }
+      
+      const isVertical = aspectRatio === "9:16"
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 720, height: 1280, aspectRatio: 9/16 },
+        video: { 
+          facingMode: "user", 
+          width: isVertical ? 720 : 1280, 
+          height: isVertical ? 1280 : 720, 
+          aspectRatio: isVertical ? 9/16 : 16/9 
+        },
         audio: true,
       })
       if (videoRef.current) {
@@ -41,7 +53,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     } catch {
       setHasPermission(false)
     }
-  }, [])
+  }, [aspectRatio])
 
   useEffect(() => {
     startCamera()
@@ -205,7 +217,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
   return (
     <div className="relative flex h-full w-full items-start justify-center md:items-center">
-      <div className="relative aspect-[9/16] h-full max-h-full w-auto overflow-hidden rounded-none bg-neutral-900 md:max-h-[80vh] md:w-full md:max-w-sm md:rounded-2xl">
+      <div className={`relative h-full max-h-full w-auto overflow-hidden rounded-none bg-neutral-900 md:max-h-[80vh] md:rounded-2xl ${
+        aspectRatio === "9:16" 
+          ? "aspect-[9/16] md:max-w-sm" 
+          : "aspect-[16/9] md:max-w-2xl"
+      }`}>
         <video
           ref={videoRef}
           autoPlay
@@ -269,6 +285,40 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
             <span className="font-mono text-8xl font-bold text-white animate-in zoom-in duration-200">
               {countdown}
             </span>
+          </div>
+        )}
+
+        {/* Aspect ratio selector - desktop only */}
+        {!isRecording && !isProcessing && countdown === null && hasPermission && (
+          <div className="absolute right-3 top-3 hidden md:flex md:right-4 md:top-4">
+            <div className="flex rounded-lg bg-black/40 p-1 backdrop-blur-sm">
+              <button
+                onClick={() => setAspectRatio("9:16")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
+                  aspectRatio === "9:16" 
+                    ? "bg-white text-black" 
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="4" y="1" width="6" height="12" rx="1" />
+                </svg>
+                9:16
+              </button>
+              <button
+                onClick={() => setAspectRatio("16:9")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
+                  aspectRatio === "16:9" 
+                    ? "bg-white text-black" 
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <rect x="1" y="4" width="12" height="6" rx="1" />
+                </svg>
+                16:9
+              </button>
+            </div>
           </div>
         )}
 
