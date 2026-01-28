@@ -110,6 +110,21 @@ export default function Home() {
     }
   }, [isMobile, recordedVideo, resultUrl])
 
+  // Handle Escape key to close video and go back to camera
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (resultUrl || recordedVideoUrl) {
+          e.preventDefault()
+          handleReset()
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [resultUrl, recordedVideoUrl, handleReset])
+
   // Handlers
   const handleProcess = useCallback(() => {
     if (!recordedVideo || !selectedCharacter) return
