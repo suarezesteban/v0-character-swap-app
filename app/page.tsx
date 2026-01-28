@@ -199,7 +199,7 @@ export default function Home() {
   return (
     <main className="relative flex h-[100dvh] flex-row overflow-hidden bg-black">
       {/* Camera/Video Section */}
-      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : currentAspectRatio === "fill" ? "p-0" : "p-6"}`}>
+      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (recordedAspectRatio === "fill" ? "p-0" : "p-2") : (currentAspectRatio === "fill" ? "p-0" : "p-2")}`}>
         {resultUrl ? (
           <div className={`relative flex h-full w-full ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
             <div className={`relative overflow-hidden bg-neutral-900 ${
@@ -224,7 +224,13 @@ export default function Home() {
               />
               {/* PiP overlay - show original video in bottom right */}
               {recordedVideoUrl && (
-                <div className="absolute bottom-20 right-4 aspect-[9/16] h-32 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg md:h-40">
+                <div className={`absolute bottom-20 right-4 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
+                  recordedAspectRatio === "9:16" 
+                    ? "aspect-[9/16] h-32 md:h-40" 
+                    : recordedAspectRatio === "16:9"
+                      ? "aspect-video w-32 md:w-48"
+                      : "aspect-video w-32 md:w-48"
+                }`}>
                   <video
                     src={recordedVideoUrl}
                     autoPlay
