@@ -236,7 +236,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
                 <span className="text-white">3.</span> Speak clearly - your audio will be preserved
               </p>
               <p className="font-mono text-[13px] leading-relaxed text-neutral-300">
-                <span className="text-white">4.</span> Videos must be 3-30 seconds long
+                <span className="text-white">4.</span> Videos must be <span className="font-semibold text-white">3-30 seconds</span> long
               </p>
             </div>
           </div>
@@ -257,6 +257,17 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
             <span className={`font-mono text-[11px] tabular-nums md:text-xs ${recordingTime >= 24 ? "text-amber-400" : "text-white"}`}>
               {recordingTime}/30s
             </span>
+          </div>
+        )}
+        
+        {/* Minimum duration indicator - show for first 3 seconds */}
+        {isRecording && recordingTime < 3 && (
+          <div className="absolute inset-x-0 top-14 flex justify-center md:top-16">
+            <div className="rounded-lg bg-neutral-800 px-4 py-2 shadow-lg">
+              <span className="font-mono text-[13px] text-neutral-300">
+                Min. <span className="font-semibold text-white">{3 - recordingTime}s</span> more
+              </span>
+            </div>
           </div>
         )}
         
@@ -296,10 +307,15 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
           {isRecording && (
             <button
               onClick={stopRecording}
-              className="flex h-16 w-16 items-center justify-center rounded-full border-[3px] border-white/90 bg-transparent transition-all hover:scale-105 active:scale-95 md:h-[72px] md:w-[72px]"
-              aria-label="Stop recording"
+              disabled={recordingTime < 3}
+              className={`flex h-16 w-16 items-center justify-center rounded-full border-[3px] transition-all md:h-[72px] md:w-[72px] ${
+                recordingTime < 3 
+                  ? "cursor-not-allowed border-neutral-600 opacity-50" 
+                  : "border-white/90 bg-transparent hover:scale-105 active:scale-95"
+              }`}
+              aria-label={recordingTime < 3 ? `Recording minimum ${3 - recordingTime}s more` : "Stop recording"}
             >
-              <span className="h-6 w-6 rounded-[4px] bg-white md:h-7 md:w-7" />
+              <span className={`h-6 w-6 rounded-[4px] md:h-7 md:w-7 ${recordingTime < 3 ? "bg-neutral-500" : "bg-white"}`} />
             </button>
           )}
 

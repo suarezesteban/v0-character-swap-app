@@ -18,19 +18,22 @@ import type { FalWebhookResult } from "@/workflows/generate-video"
  * - error: string on failure
  */
 export async function POST(request: NextRequest) {
+  const webhookReceivedTime = Date.now()
+  
   try {
     const generationId = request.nextUrl.searchParams.get("generationId")
     const hookToken = request.nextUrl.searchParams.get("hookToken")
 
-    console.log(`[fal-webhook] Received callback for generation ${generationId}, hookToken: ${hookToken}`)
+    console.log(`[fal-webhook] [${new Date().toISOString()}] Received callback for generation ${generationId}, hookToken: ${hookToken}`)
 
     if (!generationId) {
       console.error("[fal-webhook] Missing generationId")
       return NextResponse.json({ error: "Missing generationId" }, { status: 400 })
     }
 
+    const bodyParseStart = Date.now()
     const body = await request.json()
-    console.log(`[fal-webhook] Body:`, JSON.stringify(body, null, 2))
+    console.log(`[fal-webhook] [${new Date().toISOString()}] Body parsed in ${Date.now() - bodyParseStart}ms:`, JSON.stringify(body, null, 2))
 
     // If we have a hookToken, resume the workflow
     if (hookToken) {
@@ -43,12 +46,15 @@ export async function POST(request: NextRequest) {
           error: body.error,
         }
 
-        console.log(`[fal-webhook] Resuming workflow with token: ${hookToken}`)
+        console.log(`[fal-webhook] [${new Date().toISOString()}] About to resume workflow with token: ${hookToken}`)
 
         // This wakes up the workflow that's waiting at `await hook`
+        const resumeStart = Date.now()
         const result = await resumeHook(hookToken, falResult)
+        const resumeTime = Date.now() - resumeStart
 
-        console.log(`[fal-webhook] Workflow resumed successfully, runId: ${result.runId}`)
+        console.log(`[fal-webhook] [${new Date().toISOString()}] Workflow resumed successfully, runId: ${result.runId}, resumeHook took ${resumeTime}ms`)
+        console.log(`[fal-webhook] [TIMING] Total webhook processing: ${Date.now() - webhookReceivedTime}ms`)
 
         return NextResponse.json({
           received: true,
@@ -56,7 +62,7 @@ export async function POST(request: NextRequest) {
           runId: result.runId,
         })
       } catch (resumeError) {
-        console.error(`[fal-webhook] Failed to resume workflow:`, resumeError)
+        console.error(`[fal-webhook] [${new Date().toISOString()}] Failed to resume workflow:`, resumeError)
 
         // If workflow resume fails, fall back to direct processing
         // This handles cases where the workflow might have timed out or failed
