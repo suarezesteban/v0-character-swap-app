@@ -110,6 +110,22 @@ export default function Home() {
     }
   }, [isMobile, recordedVideo, resultUrl])
 
+  // Handle Escape key to go back to camera
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        // If viewing a result or recorded video, go back to camera
+        if (resultUrl || recordedVideoUrl) {
+          e.preventDefault()
+          handleReset()
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [resultUrl, recordedVideoUrl, handleReset])
+
   // Handlers
   const handleProcess = useCallback(() => {
     if (!recordedVideo || !selectedCharacter) return
