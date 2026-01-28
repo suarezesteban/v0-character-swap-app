@@ -42,40 +42,52 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
 
   const { generationId, videoUrl, characterImageUrl, characterName, userEmail } = input
 
-  console.log(`[Workflow] Starting generation ${generationId}`)
+  const workflowStartTime = Date.now()
+  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId}`)
 
   // Create a hook with deterministic token so fal-webhook can resume it
   const hook = createHook<FalWebhookResult>({
     token: `fal-generation-${generationId}`,
   })
 
-  console.log(`[Workflow] Created hook with token: fal-generation-${generationId}`)
+  console.log(`[Workflow] [${new Date().toISOString()}] Created hook with token: fal-generation-${generationId} (+${Date.now() - workflowStartTime}ms)`)
 
   // Submit to fal.ai - pass the hook token so fal-webhook knows which workflow to resume
+  const submitStartTime = Date.now()
   const requestId = await submitToFal(generationId, videoUrl, characterImageUrl, hook.token)
 
-  console.log(`[Workflow] Submitted to fal.ai (request_id: ${requestId}), waiting for webhook...`)
+  console.log(`[Workflow] [${new Date().toISOString()}] Submitted to fal.ai (request_id: ${requestId}), submitToFal took ${Date.now() - submitStartTime}ms, waiting for webhook...`)
 
   // SUSPEND HERE - workflow sleeps with ZERO resource consumption
   // until /api/fal-webhook calls resumeHook()
+  const hookWaitStartTime = Date.now()
   const falResult = await hook
+  const hookWaitTime = Date.now() - hookWaitStartTime
 
-  console.log(`[Workflow] Received fal result:`, falResult.status)
+  console.log(`[Workflow] [${new Date().toISOString()}] Received fal result: ${falResult.status}, hook waited ${hookWaitTime}ms (${(hookWaitTime / 1000).toFixed(1)}s)`)
 
   // Process the result
   if (falResult.status === "OK" && falResult.payload?.video?.url) {
     // Download and save to Blob
+    const blobStartTime = Date.now()
     const blobUrl = await saveVideoToBlob(generationId, falResult.payload.video.url)
+    console.log(`[Workflow] [${new Date().toISOString()}] saveVideoToBlob took ${Date.now() - blobStartTime}ms`)
 
     // Update database
+    const dbStartTime = Date.now()
     await markGenerationComplete(generationId, blobUrl)
+    console.log(`[Workflow] [${new Date().toISOString()}] markGenerationComplete took ${Date.now() - dbStartTime}ms`)
 
     // Send email notification
     if (userEmail) {
+      const emailStartTime = Date.now()
       await sendCompletionEmail(userEmail, blobUrl, characterName)
+      console.log(`[Workflow] [${new Date().toISOString()}] sendCompletionEmail took ${Date.now() - emailStartTime}ms`)
     }
 
-    console.log(`[Workflow] Generation ${generationId} completed: ${blobUrl}`)
+    const totalTime = Date.now() - workflowStartTime
+    console.log(`[Workflow] [${new Date().toISOString()}] Generation ${generationId} completed: ${blobUrl}`)
+    console.log(`[Workflow] [TIMING SUMMARY] Total: ${totalTime}ms (${(totalTime / 1000).toFixed(1)}s), Hook wait: ${hookWaitTime}ms (${(hookWaitTime / 1000).toFixed(1)}s)`)
     return { success: true, videoUrl: blobUrl }
   } else {
     // Handle failure
@@ -106,8 +118,12 @@ async function submitToFal(
 ): Promise<string> {
   "use step"
 
+  const stepStartTime = Date.now()
+  console.log(`[Workflow Step] [${new Date().toISOString()}] submitToFal starting...`)
+
   const { fal } = await import("@fal-ai/client")
   const { updateGenerationRunId } = await import("@/lib/db")
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
 
   fal.config({ credentials: process.env.FAL_KEY })
 
@@ -120,8 +136,9 @@ async function submitToFal(
 
   const webhookUrl = `${baseUrl}/api/fal-webhook?generationId=${generationId}&hookToken=${hookToken}`
 
-  console.log(`[Workflow Step] Submitting to fal.ai with webhook: ${webhookUrl}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Submitting to fal.ai with webhook: ${webhookUrl}`)
 
+  const falSubmitStart = Date.now()
   const { request_id } = await fal.queue.submit("fal-ai/kling-video/v2.6/standard/motion-control", {
     input: {
       image_url: characterImageUrl,
@@ -130,32 +147,43 @@ async function submitToFal(
     },
     webhookUrl,
   })
+  console.log(`[Workflow Step] [${new Date().toISOString()}] fal.queue.submit took ${Date.now() - falSubmitStart}ms`)
 
+  const dbUpdateStart = Date.now()
   await updateGenerationRunId(generationId, request_id)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] updateGenerationRunId took ${Date.now() - dbUpdateStart}ms`)
 
-  console.log(`[Workflow Step] Submitted, request_id: ${request_id}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Submitted, request_id: ${request_id}, total step time: ${Date.now() - stepStartTime}ms`)
   return request_id
 }
 
 async function saveVideoToBlob(generationId: number, falVideoUrl: string): Promise<string> {
   "use step"
 
+  const stepStartTime = Date.now()
   const { put } = await import("@vercel/blob")
 
-  console.log(`[Workflow Step] Downloading video from fal...`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Downloading video from fal: ${falVideoUrl}`)
 
+  const fetchStartTime = Date.now()
   const response = await fetch(falVideoUrl)
   if (!response.ok) {
     throw new Error(`Failed to download video: ${response.status}`)
   }
+  console.log(`[Workflow Step] [${new Date().toISOString()}] fetch() took ${Date.now() - fetchStartTime}ms, status: ${response.status}`)
 
+  const blobConvertStart = Date.now()
   const videoBlob = await response.blob()
+  console.log(`[Workflow Step] [${new Date().toISOString()}] response.blob() took ${Date.now() - blobConvertStart}ms, size: ${videoBlob.size} bytes`)
+
+  const putStartTime = Date.now()
   const { url } = await put(`generations/${generationId}-${Date.now()}.mp4`, videoBlob, {
     access: "public",
     contentType: "video/mp4",
   })
+  console.log(`[Workflow Step] [${new Date().toISOString()}] put() to Vercel Blob took ${Date.now() - putStartTime}ms`)
 
-  console.log(`[Workflow Step] Saved to blob: ${url}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Saved to blob: ${url}, total step time: ${Date.now() - stepStartTime}ms`)
   return url
 }
 
