@@ -26,7 +26,7 @@ export default function Home() {
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
   const [emailSent] = useState(false)
-  const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("9:16")
+  const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
 
   // Custom hooks
   const {

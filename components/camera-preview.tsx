@@ -24,12 +24,17 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   const [countdown, setCountdown] = useState<number | null>(null)
   const [showFlash, setShowFlash] = useState(false)
   const [showTips, setShowTips] = useState(true)
-  const [aspectRatio, setAspectRatioState] = useState<"9:16" | "16:9" | "fill">("9:16")
+  const [aspectRatio, setAspectRatioState] = useState<"9:16" | "16:9" | "fill">("fill")
   
   const setAspectRatio = useCallback((newRatio: "9:16" | "16:9" | "fill") => {
     setAspectRatioState(newRatio)
     onAspectRatioChange?.(newRatio)
   }, [onAspectRatioChange])
+  
+  // Notify parent of initial aspect ratio on mount
+  useEffect(() => {
+    onAspectRatioChange?.(aspectRatio)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const isStartingRef = useRef(false)
