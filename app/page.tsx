@@ -186,11 +186,13 @@ export default function Home() {
       {/* Camera/Video Section */}
       <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : currentAspectRatio === "fill" ? "p-0" : "p-6"}`}>
         {resultUrl ? (
-          <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
-            <div className={`relative overflow-hidden bg-neutral-900 rounded-2xl ${
+          <div className={`relative flex h-full w-full flex-col gap-4 ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
+            <div className={`relative overflow-hidden bg-neutral-900 ${
               recordedAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[70vh] w-auto max-w-sm"
-                : "aspect-video w-full max-w-4xl"
+                ? "aspect-[9/16] h-full max-h-[70vh] w-auto max-w-sm rounded-2xl"
+                : recordedAspectRatio === "16:9"
+                  ? "aspect-video w-full max-w-4xl rounded-2xl"
+                  : "h-full w-full flex-1"
             }`}>
               <video 
                 src={resultUrl} 
@@ -199,7 +201,7 @@ export default function Home() {
                 muted
                 loop 
                 playsInline
-                className="h-full w-full object-contain"
+                className={`h-full w-full ${recordedAspectRatio === "fill" ? "object-cover" : "object-contain"}`}
                 onLoadedData={(e) => {
                   const video = e.currentTarget
                   video.muted = false
@@ -240,11 +242,13 @@ export default function Home() {
             </div>
           </div>
         ) : recordedVideoUrl ? (
-          <div className="relative flex h-full w-full items-center justify-center">
-            <div className={`relative overflow-hidden bg-neutral-900 rounded-2xl ${
+          <div className={`relative flex h-full w-full ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
+            <div className={`relative overflow-hidden bg-neutral-900 ${
               recordedAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[80vh] w-auto max-w-sm"
-                : "aspect-video w-full max-w-4xl"
+                ? "aspect-[9/16] h-full max-h-[80vh] w-auto max-w-sm rounded-2xl"
+                : recordedAspectRatio === "16:9"
+                  ? "aspect-video w-full max-w-4xl rounded-2xl"
+                  : "h-full w-full"
             }`}>
               <video 
                 src={recordedVideoUrl} 
@@ -253,7 +257,7 @@ export default function Home() {
                 muted
                 loop 
                 playsInline
-                className="h-full w-full object-contain" 
+                className={`h-full w-full ${recordedAspectRatio === "fill" ? "object-cover" : "object-contain"}`} 
                 onLoadedData={(e) => {
                   // Unmute after autoplay starts
                   const video = e.currentTarget
