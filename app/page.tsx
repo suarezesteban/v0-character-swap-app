@@ -243,6 +243,7 @@ export default function Home() {
           </div>
         ) : recordedVideoUrl ? (
           <div className={`relative flex h-full w-full ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
+            {console.log("[v0] recordedAspectRatio:", recordedAspectRatio)}
             <div className={`relative overflow-hidden bg-neutral-900 ${
               recordedAspectRatio === "9:16"
                 ? "aspect-[9/16] h-full max-h-[80vh] w-auto max-w-sm rounded-2xl"
