@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react"
 
 interface CameraPreviewProps {
-  onVideoRecorded: (videoBlob: Blob) => void
+  onVideoRecorded: (videoBlob: Blob, aspectRatio: "9:16" | "16:9") => void
   isProcessing: boolean
   progress?: number
   progressMessage?: string
@@ -126,7 +126,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         animationFrameRef.current = null
       }
       const blob = new Blob(chunksRef.current, { type: mimeType })
-      onVideoRecorded(blob)
+      onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder

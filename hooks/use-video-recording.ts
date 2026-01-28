@@ -8,10 +8,11 @@ interface UseVideoRecordingReturn {
   recordedVideo: Blob | null
   recordedVideoUrl: string | null
   uploadedVideoUrl: string | null
+  recordedAspectRatio: "9:16" | "16:9"
   isUploading: boolean
   showPreview: boolean
   setShowPreview: (show: boolean) => void
-  handleVideoRecorded: (blob: Blob) => void
+  handleVideoRecorded: (blob: Blob, aspectRatio: "9:16" | "16:9") => void
   clearRecording: () => void
   restoreFromSession: () => Promise<{ shouldAutoSubmit: boolean }>
   saveToSession: (video: Blob, characterId: number | null) => Promise<void>
@@ -21,6 +22,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null)
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null)
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null)
+  const [recordedAspectRatio, setRecordedAspectRatio] = useState<"9:16" | "16:9">("16:9")
   const [isUploading, setIsUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
 
@@ -52,7 +54,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [])
 
-  const handleVideoRecorded = useCallback((blob: Blob) => {
+  const handleVideoRecorded = useCallback((blob: Blob, aspectRatio: "9:16" | "16:9") => {
     // Validate file size
     if (blob.size > MAX_VIDEO_SIZE) {
       alert("Video is too large. Please record a shorter video (max 50MB).")
@@ -82,6 +84,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       }
       
       setRecordedVideo(blob)
+      setRecordedAspectRatio(aspectRatio)
       setShowPreview(true)
       // Start uploading immediately in background
       uploadVideo(blob)
@@ -91,6 +94,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       URL.revokeObjectURL(video.src)
       // Still accept the video if we can't validate duration
       setRecordedVideo(blob)
+      setRecordedAspectRatio(aspectRatio)
       setShowPreview(true)
       uploadVideo(blob)
     }
@@ -102,6 +106,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     setRecordedVideo(null)
     setRecordedVideoUrl(null)
     setUploadedVideoUrl(null)
+    setRecordedAspectRatio("16:9")
     setShowPreview(false)
   }, [])
 
@@ -165,6 +170,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     recordedVideo,
     recordedVideoUrl,
     uploadedVideoUrl,
+    recordedAspectRatio,
     isUploading,
     showPreview,
     setShowPreview,

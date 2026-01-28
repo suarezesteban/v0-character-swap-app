@@ -44,6 +44,7 @@ export default function Home() {
     recordedVideo,
     recordedVideoUrl,
     uploadedVideoUrl,
+    recordedAspectRatio,
     isUploading,
     showPreview,
     setShowPreview,
@@ -185,7 +186,11 @@ export default function Home() {
       <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : "p-6"}`}>
         {resultUrl ? (
           <div className="relative flex h-full w-full flex-col items-center justify-center gap-4">
-            <div className="relative aspect-[9/16] h-full max-h-[70vh] w-full max-w-sm overflow-hidden rounded-2xl bg-neutral-900">
+            <div className={`relative overflow-hidden rounded-2xl bg-neutral-900 ${
+              recordedAspectRatio === "9:16"
+                ? "aspect-[9/16] h-full max-h-[70vh] w-auto max-w-sm"
+                : "aspect-[16/9] h-auto w-full max-w-4xl"
+            }`}>
               <video 
                 src={resultUrl} 
                 controls 
@@ -235,7 +240,11 @@ export default function Home() {
           </div>
         ) : recordedVideoUrl ? (
           <div className="relative flex h-full w-full items-center justify-center">
-            <div className="relative aspect-[9/16] h-full max-h-[80vh] w-full max-w-sm overflow-hidden rounded-2xl bg-neutral-900">
+            <div className={`relative overflow-hidden rounded-2xl bg-neutral-900 ${
+              recordedAspectRatio === "9:16"
+                ? "aspect-[9/16] h-full max-h-[80vh] w-auto max-w-sm"
+                : "aspect-[16/9] h-auto w-full max-w-4xl"
+            }`}>
               <video 
                 src={recordedVideoUrl} 
                 controls 
