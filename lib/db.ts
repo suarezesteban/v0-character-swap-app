@@ -7,6 +7,7 @@ export interface Generation {
   user_id: string
   user_email: string | null
   video_url: string | null
+  source_video_url: string | null
   character_name: string | null
   character_image_url: string | null
   status: "uploading" | "processing" | "completed" | "failed" | "cancelled"
@@ -50,7 +51,7 @@ export async function createPendingGeneration(data: {
 export async function updateGenerationStartProcessing(id: number, videoUrl: string, characterImageUrl: string) {
   await sql`
     UPDATE generations 
-    SET video_url = ${videoUrl}, character_image_url = ${characterImageUrl}, status = 'processing'
+    SET source_video_url = ${videoUrl}, character_image_url = ${characterImageUrl}, status = 'processing'
     WHERE id = ${id}
   `
 }

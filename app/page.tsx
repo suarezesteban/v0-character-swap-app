@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import Image from "next/image"
 import { CameraPreview } from "@/components/camera-preview"
 import { CharacterGrid, defaultCharacters } from "@/components/character-grid"
@@ -22,11 +22,16 @@ export default function Home() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [sendViaEmail, setSendViaEmail] = useState(true)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
+  const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null)
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<string | null>(null)
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
   const [emailSent] = useState(false)
   const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
+
+  // Video refs for sync
+  const mainVideoRef = useRef<HTMLVideoElement>(null)
+  const pipVideoRef = useRef<HTMLVideoElement>(null)
 
   // Custom hooks
   const {
@@ -122,6 +127,7 @@ export default function Home() {
   const handleReset = useCallback(() => {
     clearRecording()
     setResultUrl(null)
+    setSourceVideoUrl(null)
     setSelectedCharacter(null)
     setSelectedGeneratedVideo(null)
   }, [clearRecording, setSelectedCharacter])
@@ -210,6 +216,7 @@ export default function Home() {
                   : "h-full w-full"
             }`}>
               <video 
+                ref={mainVideoRef}
                 src={resultUrl} 
                 controls 
                 autoPlay 
@@ -221,9 +228,20 @@ export default function Home() {
                   const video = e.currentTarget
                   video.muted = false
                 }}
+                onPlay={() => {
+                  pipVideoRef.current?.play()
+                }}
+                onPause={() => {
+                  pipVideoRef.current?.pause()
+                }}
+                onSeeked={() => {
+                  if (pipVideoRef.current && mainVideoRef.current) {
+                    pipVideoRef.current.currentTime = mainVideoRef.current.currentTime
+                  }
+                }}
               />
               {/* PiP overlay - show original video in bottom right */}
-              {recordedVideoUrl && (
+              {(sourceVideoUrl || recordedVideoUrl) && (
                 <div className={`absolute bottom-20 right-4 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
                   recordedAspectRatio === "9:16" 
                     ? "aspect-[9/16] h-32 md:h-40" 
@@ -232,7 +250,8 @@ export default function Home() {
                       : "aspect-video w-32 md:w-48"
                 }`}>
                   <video
-                    src={recordedVideoUrl}
+                    ref={pipVideoRef}
+                    src={sourceVideoUrl || recordedVideoUrl || ""}
                     autoPlay
                     muted
                     loop
@@ -349,9 +368,10 @@ export default function Home() {
                 onSendViaEmailChange={setSendViaEmail}
               >
                 <GenerationsPanel
-                onSelectVideo={(url) => {
+                onSelectVideo={(url, sourceUrl) => {
                   setSelectedGeneratedVideo(url)
                   setResultUrl(url)
+                  setSourceVideoUrl(sourceUrl)
                 }}
                 className="mt-4 border-t border-neutral-800 pt-4"
               />
@@ -418,9 +438,10 @@ export default function Home() {
                 onSendViaEmailChange={setSendViaEmail}
               >
                 <GenerationsPanel
-                  onSelectVideo={(url) => {
+                  onSelectVideo={(url, sourceUrl) => {
                     setSelectedGeneratedVideo(url)
                     setResultUrl(url)
+                    setSourceVideoUrl(sourceUrl)
                     setBottomSheetExpanded(false)
                   }}
                   className="mt-4 border-t border-neutral-800 pt-4"

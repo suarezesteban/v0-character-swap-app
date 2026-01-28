@@ -52,6 +52,7 @@ function showVideoReadyNotification(characterName: string | null) {
 interface Generation {
   id: number
   video_url: string | null
+  source_video_url: string | null
   character_name: string | null
   character_image_url: string | null
   status: "uploading" | "pending" | "processing" | "completed" | "failed" | "cancelled"
@@ -61,7 +62,7 @@ interface Generation {
 }
 
 interface GenerationsPanelProps {
-  onSelectVideo?: (videoUrl: string) => void
+  onSelectVideo?: (videoUrl: string, sourceVideoUrl: string | null) => void
   className?: string
 }
 
@@ -213,7 +214,7 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
               <button
-                onClick={() => onSelectVideo?.(gen.video_url!)}
+                onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url)}
                 className="group relative h-full w-full"
               >
                 <video
