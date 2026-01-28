@@ -1,4 +1,4 @@
-import { createHook } from "workflow"
+import { sleep } from "workflow"
 
 /**
  * Input for the video generation workflow
@@ -27,15 +27,13 @@ export interface FalWebhookResult {
 }
 
 /**
- * Durable workflow for video generation using hooks (not polling!)
+ * Durable workflow for video generation using polling
  * 
  * Flow:
- * 1. Workflow creates a hook with token `fal-generation-{generationId}`
- * 2. Workflow submits to fal.ai with our webhook URL
- * 3. Workflow suspends at `await hook` (ZERO resources consumed)
- * 4. fal.ai completes and calls /api/fal-webhook
- * 5. /api/fal-webhook calls resumeHook() to wake the workflow
- * 6. Workflow resumes and processes the result
+ * 1. Workflow submits job to fal.ai
+ * 2. Workflow polls fal.ai every 30s until complete
+ * 3. Workflow saves result to Blob and updates database
+ * 4. Optional: Send email notification
  */
 export async function generateVideoWorkflow(input: GenerateVideoInput) {
   "use workflow"
@@ -44,21 +42,40 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
 
   console.log(`[Workflow] Starting generation ${generationId}`)
 
-  // Create a hook with deterministic token so fal-webhook can resume it
-  const hook = createHook<FalWebhookResult>({
-    token: `fal-generation-${generationId}`,
-  })
+  // Submit to fal.ai
+  const requestId = await submitToFal(generationId, videoUrl, characterImageUrl)
 
-  console.log(`[Workflow] Created hook with token: fal-generation-${generationId}`)
+  console.log(`[Workflow] Submitted to fal.ai (request_id: ${requestId}), polling for result...`)
 
-  // Submit to fal.ai - pass the hook token so fal-webhook knows which workflow to resume
-  const requestId = await submitToFal(generationId, videoUrl, characterImageUrl, hook.token)
-
-  console.log(`[Workflow] Submitted to fal.ai (request_id: ${requestId}), waiting for webhook...`)
-
-  // SUSPEND HERE - workflow sleeps with ZERO resource consumption
-  // until /api/fal-webhook calls resumeHook()
-  const falResult = await hook
+  // Poll fal.ai directly instead of relying on webhooks
+  // This is more reliable as webhooks can fail due to URL issues
+  let falResult: FalWebhookResult | null = null
+  
+  const MAX_WAIT_TIME = 15 * 60 * 1000 // 15 minutes max
+  const POLL_INTERVAL = 30 * 1000 // Poll every 30 seconds
+  const startTime = Date.now()
+  
+  while (!falResult && (Date.now() - startTime) < MAX_WAIT_TIME) {
+    // Poll fal.ai directly
+    const polledResult = await pollFalStatus(requestId)
+    if (polledResult) {
+      console.log(`[Workflow] Got result from fal.ai: ${polledResult.status}`)
+      falResult = polledResult
+      break
+    }
+    
+    // Wait before next poll
+    const elapsed = Math.round((Date.now() - startTime) / 1000)
+    console.log(`[Workflow] Still processing... (${elapsed}s elapsed), waiting ${POLL_INTERVAL / 1000}s before next poll`)
+    await sleep(POLL_INTERVAL)
+  }
+  
+  // If still no result after timeout, mark as failed
+  if (!falResult) {
+    console.error(`[Workflow] Timeout waiting for fal.ai result after ${MAX_WAIT_TIME / 1000}s`)
+    await markGenerationFailed(generationId, "Generation timed out - no response from AI service")
+    return { success: false, error: "Generation timed out" }
+  }
 
   console.log(`[Workflow] Received fal result:`, falResult.status)
 
@@ -98,11 +115,62 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
 // STEP FUNCTIONS (have full Node.js access)
 // ============================================
 
+/**
+ * Poll fal.ai to check if the job is complete
+ * Returns the result if complete, null if still processing
+ */
+async function pollFalStatus(requestId: string): Promise<FalWebhookResult | null> {
+  "use step"
+
+  const { fal } = await import("@fal-ai/client")
+
+  fal.config({ credentials: process.env.FAL_KEY })
+
+  try {
+    const status = await fal.queue.status("fal-ai/kling-video/v2.6/standard/motion-control", {
+      requestId,
+      logs: true,
+    })
+
+    console.log(`[Workflow Step] Polled fal.ai status: ${status.status}`)
+
+    if (status.status === "COMPLETED") {
+      // Fetch the actual result
+      const result = await fal.queue.result("fal-ai/kling-video/v2.6/standard/motion-control", {
+        requestId,
+      })
+
+      return {
+        status: "OK",
+        request_id: requestId,
+        payload: {
+          video: result.data && typeof result.data === 'object' && 'video' in result.data
+            ? (result.data as { video: { url: string } }).video
+            : undefined,
+        },
+      }
+    }
+
+    if (status.status === "FAILED") {
+      return {
+        status: "ERROR",
+        request_id: requestId,
+        error: "Processing failed on fal.ai",
+      }
+    }
+
+    // Still processing
+    return null
+  } catch (error) {
+    console.error(`[Workflow Step] Error polling fal.ai:`, error)
+    return null
+  }
+}
+
 async function submitToFal(
   generationId: number,
   videoUrl: string,
-  characterImageUrl: string,
-  hookToken: string
+  characterImageUrl: string
 ): Promise<string> {
   "use step"
 
@@ -111,16 +179,7 @@ async function submitToFal(
 
   fal.config({ credentials: process.env.FAL_KEY })
 
-  // Build our webhook URL with both generationId and hookToken
-  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000"
-
-  const webhookUrl = `${baseUrl}/api/fal-webhook?generationId=${generationId}&hookToken=${hookToken}`
-
-  console.log(`[Workflow Step] Submitting to fal.ai with webhook: ${webhookUrl}`)
+  console.log(`[Workflow Step] Submitting to fal.ai...`)
 
   const { request_id } = await fal.queue.submit("fal-ai/kling-video/v2.6/standard/motion-control", {
     input: {
@@ -128,7 +187,6 @@ async function submitToFal(
       video_url: videoUrl,
       character_orientation: "video",
     },
-    webhookUrl,
   })
 
   await updateGenerationRunId(generationId, request_id)

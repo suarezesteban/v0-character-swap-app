@@ -46,14 +46,15 @@ export function GenerationProgress({
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  // Status-specific messages
+  // Status-specific messages based on typical fal.ai processing stages
   const getStatusMessage = () => {
     if (status === "uploading") return "Uploading video..."
     if (status === "pending") return "In queue..."
-    if (elapsedSeconds < 30) return "Starting AI model..."
-    if (elapsedSeconds < 120) return "Analyzing video..."
-    if (elapsedSeconds < 240) return "Generating frames..."
-    return "Finalizing..."
+    if (elapsedSeconds < 60) return "Starting AI model..."
+    if (elapsedSeconds < 180) return "Analyzing video..."
+    if (elapsedSeconds < 300) return "Generating frames..."
+    if (elapsedSeconds < 420) return "Rendering video..."
+    return "Almost done..."
   }
 
   return (
@@ -167,10 +168,11 @@ export function GenerationProgressExpanded({
   const getStatusMessage = () => {
     if (status === "uploading") return "Uploading video..."
     if (status === "pending") return "In queue..."
-    if (elapsedSeconds < 30) return "Starting AI model..."
-    if (elapsedSeconds < 120) return "Analyzing video..."
-    if (elapsedSeconds < 240) return "Generating frames..."
-    return "Finalizing..."
+    if (elapsedSeconds < 60) return "Starting AI model..."
+    if (elapsedSeconds < 180) return "Analyzing video..."
+    if (elapsedSeconds < 300) return "Generating frames..."
+    if (elapsedSeconds < 420) return "Rendering video..."
+    return "Almost done..."
   }
 
   return (
