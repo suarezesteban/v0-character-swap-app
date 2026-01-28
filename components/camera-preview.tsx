@@ -316,11 +316,13 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         {showTips && hasPermission && (
           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 px-6 backdrop-blur-sm">
             <div className="flex max-w-[280px] flex-col gap-4">
-              <div>
+              <div className="flex flex-col gap-0.5">
                 <p className="font-mono text-[12px] text-neutral-400">
                   Using{" "}
                   <span className="text-white">Kling AI Motion Control</span>
-                  {" "}via{" "}
+                </p>
+                <p className="font-mono text-[12px] text-neutral-400">
+                  via{" "}
                   <a 
                     href="https://vercel.com/ai-gateway" 
                     target="_blank" 
