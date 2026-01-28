@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react"
 
 interface CameraPreviewProps {
-  onVideoRecorded: (videoBlob: Blob, aspectRatio: "9:16" | "16:9") => void
+  onVideoRecorded: (videoBlob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
   isProcessing: boolean
   progress?: number
   progressMessage?: string
@@ -133,8 +133,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         animationFrameRef.current = null
       }
       const blob = new Blob(chunksRef.current, { type: mimeType })
-      // For "fill" mode, report as 16:9 since that's what most webcams capture
-      onVideoRecorded(blob, aspectRatio === "9:16" ? "9:16" : "16:9")
+      onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder

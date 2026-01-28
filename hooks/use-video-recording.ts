@@ -8,11 +8,11 @@ interface UseVideoRecordingReturn {
   recordedVideo: Blob | null
   recordedVideoUrl: string | null
   uploadedVideoUrl: string | null
-  recordedAspectRatio: "9:16" | "16:9"
+  recordedAspectRatio: "9:16" | "16:9" | "fill"
   isUploading: boolean
   showPreview: boolean
   setShowPreview: (show: boolean) => void
-  handleVideoRecorded: (blob: Blob, aspectRatio: "9:16" | "16:9") => void
+  handleVideoRecorded: (blob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
   clearRecording: () => void
   restoreFromSession: () => Promise<{ shouldAutoSubmit: boolean }>
   saveToSession: (video: Blob, characterId: number | null) => Promise<void>
@@ -22,7 +22,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null)
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null)
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null)
-  const [recordedAspectRatio, setRecordedAspectRatio] = useState<"9:16" | "16:9">("16:9")
+  const [recordedAspectRatio, setRecordedAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isUploading, setIsUploading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
 
@@ -54,7 +54,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [])
 
-  const handleVideoRecorded = useCallback((blob: Blob, aspectRatio: "9:16" | "16:9") => {
+  const handleVideoRecorded = useCallback((blob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => {
     // Validate file size
     if (blob.size > MAX_VIDEO_SIZE) {
       alert("Video is too large. Please record a shorter video (max 50MB).")
@@ -106,7 +106,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     setRecordedVideo(null)
     setRecordedVideoUrl(null)
     setUploadedVideoUrl(null)
-    setRecordedAspectRatio("16:9")
+    setRecordedAspectRatio("fill")
     setShowPreview(false)
   }, [])
 
