@@ -126,6 +126,21 @@ export default function Home() {
     setSelectedGeneratedVideo(null)
   }, [clearRecording, setSelectedCharacter])
 
+  // Handle Escape key to close video and go back to camera
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (resultUrl || recordedVideoUrl) {
+          e.preventDefault()
+          handleReset()
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [resultUrl, recordedVideoUrl, handleReset])
+
   const handleLoginAndContinue = useCallback(async () => {
     if (recordedVideo) {
       await saveToSession(recordedVideo, selectedCharacter)
@@ -207,6 +222,19 @@ export default function Home() {
                   video.muted = false
                 }}
               />
+              {/* PiP overlay - show original video in bottom right */}
+              {recordedVideoUrl && (
+                <div className="absolute bottom-20 right-4 aspect-[9/16] h-32 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg md:h-40">
+                  <video
+                    src={recordedVideoUrl}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              )}
               {/* Action buttons overlayed on video */}
               <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3">
                 <button
