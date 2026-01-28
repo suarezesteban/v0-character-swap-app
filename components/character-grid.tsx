@@ -217,7 +217,7 @@ export function CharacterGrid({
         </div>
       )}
       
-      <div className="flex-1">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <p className="mb-2 font-mono text-[10px] lowercase text-neutral-500 md:mb-3 md:text-[11px]">
           select character
         </p>
@@ -418,10 +418,10 @@ export function CharacterGrid({
         {children}
       </div>
       
-      {/* Generate Video CTA - Always visible */}
+      {/* Generate Video CTA - Always visible at bottom */}
       {onGenerate && (
-        <div className="shrink-0 border-t border-neutral-800 pt-4">
-          <div className="flex flex-col gap-4">
+        <div className="shrink-0 border-t border-neutral-800 pt-3 md:pt-4">
+          <div className="flex flex-col gap-2 md:gap-4">
             {onSendViaEmailChange && (
               <label className={cn(
                 "flex cursor-pointer items-center gap-2",
@@ -434,19 +434,19 @@ export function CharacterGrid({
                   disabled={!canGenerate}
                   className="h-3 w-3 rounded-sm border-neutral-700 bg-transparent accent-white"
                 />
-                <span className="font-mono text-[11px] text-neutral-500">
+                <span className="font-mono text-[10px] text-neutral-500 md:text-[11px]">
                   send video via email when ready
                 </span>
               </label>
             )}
             <p className={cn(
-              "font-mono text-[10px] text-neutral-600",
+              "hidden font-mono text-[10px] text-neutral-600 md:block",
               !canGenerate && "opacity-50"
             )}>
               generation takes 3-4 minutes. we{"'"}ll email you when complete.
             </p>
             {generateError && (
-              <p className="font-mono text-[11px] text-amber-400">
+              <p className="font-mono text-[10px] text-amber-400 md:text-[11px]">
                 {generateError}
               </p>
             )}
@@ -464,7 +464,7 @@ export function CharacterGrid({
                 }
               }}
               className={cn(
-                "flex h-10 w-full items-center justify-center rounded-lg font-mono text-[13px] font-medium transition-all active:scale-[0.98]",
+                "flex h-9 w-full items-center justify-center rounded-lg font-mono text-[12px] font-medium transition-all active:scale-[0.98] md:h-10 md:text-[13px]",
                 canGenerate 
                   ? "bg-white text-black hover:bg-neutral-200" 
                   : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"

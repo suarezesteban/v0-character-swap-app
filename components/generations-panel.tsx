@@ -129,15 +129,15 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
 
   return (
     <div className={className}>
-      <p className="mb-2 font-sans text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+      <p className="mb-1.5 font-sans text-[10px] font-medium uppercase tracking-wider text-neutral-500 md:mb-2 md:text-[11px]">
         My Videos
       </p>
       
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
         {generations.filter(g => g.status !== "cancelled").map((gen) => (
           <div
             key={gen.id}
-            className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-neutral-900 ring-1 ring-neutral-800"
+            className="relative h-16 w-11 shrink-0 overflow-hidden rounded-md bg-neutral-900 ring-1 ring-neutral-800 md:h-20 md:w-14 md:rounded-lg"
           >
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
@@ -179,12 +179,14 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
               />
             )}
             
-            {/* Time indicator */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1 py-0.5">
-              <span className="font-mono text-[8px] text-neutral-400">
-                {formatTime(gen.created_at)}
-              </span>
-            </div>
+            {/* Time indicator - only show for completed/failed, not for processing */}
+            {(gen.status === "completed" || gen.status === "failed") && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1 py-0.5">
+                <span className="font-mono text-[8px] text-neutral-400">
+                  {formatTime(gen.completed_at || gen.created_at)}
+                </span>
+              </div>
+            )}
           </div>
         ))}
       </div>

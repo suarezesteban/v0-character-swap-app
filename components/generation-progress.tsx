@@ -70,10 +70,10 @@ export function GenerationProgress({
       )}
       
       {/* Progress content */}
-      <div className="relative z-10 flex h-full flex-col items-center justify-center p-1">
-        {/* Circular progress indicator */}
-        <div className="relative h-8 w-8">
-          <svg className="h-8 w-8 -rotate-90" viewBox="0 0 36 36">
+      <div className="relative z-10 flex h-full flex-col items-center justify-center p-0.5">
+        {/* Circular progress indicator - smaller on mobile */}
+        <div className="relative h-8 w-8 md:h-10 md:w-10">
+          <svg className="h-8 w-8 -rotate-90 md:h-10 md:w-10" viewBox="0 0 36 36">
             {/* Background circle */}
             <circle
               cx="18"
@@ -81,7 +81,7 @@ export function GenerationProgress({
               r="15"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               className="text-neutral-800"
             />
             {/* Progress circle */}
@@ -91,22 +91,15 @@ export function GenerationProgress({
               r="15"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeDasharray={`${progress * 0.94} 94`}
               className="text-white transition-all duration-1000"
             />
           </svg>
           {/* Percentage in center */}
-          <span className="absolute inset-0 flex items-center justify-center font-mono text-[7px] font-medium text-white">
+          <span className="absolute inset-0 flex items-center justify-center font-mono text-[8px] font-semibold text-white md:text-[9px]">
             {Math.round(progress)}%
-          </span>
-        </div>
-        
-        {/* Time remaining */}
-        <div className="mt-1 text-center">
-          <span className="font-mono text-[8px] tabular-nums text-neutral-300">
-            {remainingSeconds > 0 ? formatTime(remainingSeconds) : "Almost done"}
           </span>
         </div>
       </div>

@@ -69,7 +69,7 @@ export function BottomSheet({
         isDragging ? "duration-0" : "duration-300 ease-out"
       }`}
       style={{
-        height: isExpanded ? "85vh" : `${peekHeight}px`,
+        height: isExpanded ? "70vh" : `${peekHeight}px`,
         transform: getTransform(),
       }}
       onTouchStart={handleTouchStart}
