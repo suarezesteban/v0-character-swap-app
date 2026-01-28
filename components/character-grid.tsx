@@ -222,7 +222,9 @@ export function CharacterGrid({
           select character
         </p>
         
-        <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
+        {/* Extra padding to prevent ring clipping on selected items */}
+        <div className="-mx-1 px-1">
+          <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
           {allCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
@@ -354,6 +356,7 @@ export function CharacterGrid({
             onChange={handleFileChange}
             className="hidden"
           />
+          </div>
         </div>
         
         {/* AI Prompt Bar - shows inline below the grid */}
