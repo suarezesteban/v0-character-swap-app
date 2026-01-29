@@ -310,6 +310,7 @@ export default function Home() {
                           pipVideoUrl: pipSource,
                           pipPosition: "bottom-right",
                           pipScale: 0.25,
+                          addWatermark: true,
                           onProgress: setDownloadProgress,
                         })
                         
@@ -325,13 +326,28 @@ export default function Home() {
                         setDownloadProgress(0)
                       }
                     } else {
-                      // No PiP source, download original
+                      // No PiP, but still add watermark
                       try {
+                        setIsDownloading(true)
+                        setDownloadProgress(0)
+                        
+                        const videoBlob = await createPipVideoClient({
+                          mainVideoUrl: resultUrl,
+                          pipVideoUrl: null,
+                          addWatermark: true,
+                          onProgress: setDownloadProgress,
+                        })
+                        
+                        downloadBlob(videoBlob, "generated-video.mp4")
+                      } catch (error) {
+                        console.error("Watermark failed, downloading original:", error)
+                        // Fallback to regular download
                         const response = await fetch(resultUrl)
                         const blob = await response.blob()
                         downloadBlob(blob, "generated-video.mp4")
-                      } catch (error) {
-                        console.error("Download failed:", error)
+                      } finally {
+                        setIsDownloading(false)
+                        setDownloadProgress(0)
                       }
                     }
                   }}
