@@ -242,7 +242,7 @@ export function CharacterGrid({
                     src={char.src || "/placeholder.svg"}
                     alt={char.name}
                     fill
-                    className="object-cover"
+                    className="object-cover object-top"
                     sizes="80px"
                   />
                 </button>
