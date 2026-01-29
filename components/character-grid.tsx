@@ -467,7 +467,7 @@ export function CharacterGrid({
       
       {/* Generate Video CTA - Always visible at bottom */}
       {onGenerate && (
-        <div className="shrink-0 border-t border-neutral-800 pt-2 md:pt-4">
+        <div className="shrink-0 pt-2 md:pt-4">
           <div className="flex flex-col gap-1.5 md:gap-4">
             <p className={cn(
               "hidden font-mono text-[10px] text-neutral-600 md:block",
