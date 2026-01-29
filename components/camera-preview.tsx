@@ -164,7 +164,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         return prev + 1
       })
     }, 1000)
-  }, [onVideoRecorded])
+  }, [onVideoRecorded, aspectRatio])
 
   const startRecording = useCallback(() => {
     if (!videoRef.current?.srcObject || isStartingRef.current) return
