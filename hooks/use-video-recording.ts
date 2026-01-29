@@ -55,7 +55,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   }, [])
 
   const handleVideoRecorded = useCallback((blob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => {
-    console.log("[v0] handleVideoRecorded called with aspectRatio:", aspectRatio)
     // Validate file size
     if (blob.size > MAX_VIDEO_SIZE) {
       alert("Video is too large. Please record a shorter video (max 50MB).")
@@ -84,7 +83,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
         return
       }
       
-      console.log("[v0] Setting recordedVideo and aspectRatio:", aspectRatio)
       setRecordedVideo(blob)
       setRecordedAspectRatio(aspectRatio)
       setShowPreview(true)
@@ -95,7 +93,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     video.onerror = () => {
       URL.revokeObjectURL(video.src)
       // Still accept the video if we can't validate duration
-      console.log("[v0] Video error - Setting aspectRatio:", aspectRatio)
       setRecordedVideo(blob)
       setRecordedAspectRatio(aspectRatio)
       setShowPreview(true)
