@@ -242,29 +242,41 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
           >
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
-              <button
-                onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.aspect_ratio || "fill")}
-                className="group relative h-full w-full"
-              >
-                <video
-                  src={gen.video_url}
-                  className="h-full w-full object-contain"
-                  muted
-                  playsInline
-                  preload="none"
-                  poster={gen.character_image_url || undefined}
-                  onMouseEnter={(e) => e.currentTarget.play()}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.pause()
-                    e.currentTarget.currentTime = 0
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                  <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
+              <div className="group relative h-full w-full">
+                <button
+                  onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.aspect_ratio || "fill")}
+                  className="relative h-full w-full"
+                >
+                  <video
+                    src={gen.video_url}
+                    className="h-full w-full object-cover"
+                    muted
+                    playsInline
+                    preload="none"
+                    poster={gen.character_image_url || undefined}
+                    onMouseEnter={(e) => e.currentTarget.play()}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.pause()
+                      e.currentTarget.currentTime = 0
+                    }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                    <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </button>
+                {/* Delete button for completed videos */}
+                <button
+                  onClick={(e) => handleDelete(gen.id, e)}
+                  className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow-md transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                  title="Delete video"
+                >
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </div>
-              </button>
+                </button>
+              </div>
             ) : gen.status === "failed" || gen.status === "cancelled" ? (
               <FailedGeneration 
                 gen={gen} 
