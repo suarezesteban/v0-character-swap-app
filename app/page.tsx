@@ -198,14 +198,14 @@ export default function Home() {
   return (
     <main className="relative flex h-[100dvh] flex-row overflow-hidden bg-black">
       {/* Camera/Video Section */}
-      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-2") : "p-0"}`}>
+      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-1") : "p-0"}`}>
         {resultUrl ? (
           <div className={`relative flex h-full w-full ${generatedVideoAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
             <div className={`relative overflow-hidden bg-neutral-900 ${
               generatedVideoAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-2xl"
+                ? "aspect-[9/16] h-full max-h-[95vh] w-auto rounded-lg"
                 : generatedVideoAspectRatio === "16:9"
-                  ? "aspect-video w-full max-w-4xl rounded-2xl"
+                  ? "aspect-video w-full max-w-[90%] rounded-lg"
                   : "h-full w-full"
             }`}>
               <video 
@@ -281,7 +281,6 @@ export default function Home() {
                       <video
                         ref={pipVideoRef}
                         src={sourceVideoUrl || recordedVideoUrl || ""}
-                        autoPlay
                         muted
                         playsInline
                         className="h-full w-full object-cover"
