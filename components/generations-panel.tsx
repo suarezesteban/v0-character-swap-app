@@ -241,16 +241,16 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
             className={`group relative shrink-0 ${thumbnailClass}`}
           >
             {/* Container with overflow hidden for video */}
-            <div className="h-full w-full overflow-hidden rounded-md bg-neutral-900 ring-1 ring-neutral-800 md:rounded-lg">
+            <div className="h-full w-full overflow-hidden rounded-lg bg-neutral-900 ring-1 ring-neutral-800">
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
               <button
                 onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.aspect_ratio || "fill")}
-                className="relative h-full w-full"
+                className="relative h-full w-full overflow-hidden rounded-lg"
               >
                 <video
                   src={gen.video_url}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full rounded-lg object-cover"
                   muted
                   playsInline
                   preload="none"
@@ -261,7 +261,7 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
                     e.currentTarget.currentTime = 0
                   }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                   <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
