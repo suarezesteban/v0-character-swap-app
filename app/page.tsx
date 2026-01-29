@@ -293,7 +293,7 @@ export default function Home() {
                 </div>
               )}
               {/* Action buttons overlayed on video */}
-              <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3">
+              <div className="absolute bottom-16 left-1/2 flex -translate-x-1/2 items-center gap-3">
                 <button
                   disabled={isDownloading}
                   onClick={async () => {
@@ -335,7 +335,7 @@ export default function Home() {
                       }
                     }
                   }}
-                  className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95 disabled:opacity-70"
+                  className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl transition-all hover:bg-neutral-100 active:scale-95 disabled:opacity-70"
                 >
                   {isDownloading ? (
                     <>
@@ -356,7 +356,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="rounded-full bg-black/50 px-5 py-2.5 font-sans text-[13px] font-medium text-white shadow-lg backdrop-blur-md transition-all hover:bg-black/60 active:scale-95"
+                  className="rounded-full bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
                 >
                   New Video
                 </button>
