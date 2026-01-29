@@ -85,8 +85,10 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     // Wait for video to have dimensions
     const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
-    let width = video.videoWidth || 720
-    let height = video.videoHeight || 1280
+    const originalWidth = video.videoWidth || 720
+    const originalHeight = video.videoHeight || 1280
+    let width = originalWidth
+    let height = originalHeight
     
     // Mobile: Reduce resolution to avoid issues with fal.ai processing large files
     if (isMobileDevice) {
@@ -97,6 +99,14 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         height = Math.round(height * scale)
       }
     }
+    
+    console.log("[v0] Recording config:", { 
+      isMobileDevice, 
+      originalWidth, 
+      originalHeight, 
+      canvasWidth: width, 
+      canvasHeight: height 
+    })
     
     // Set canvas size
     canvas.width = width
@@ -123,27 +133,38 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
+    let videoBitrate: number
     if (isMobileDevice) {
       // Mobile: Use lower bitrate - too high can cause issues with fal.ai processing
       mimeType = MediaRecorder.isTypeSupported("video/mp4") 
         ? "video/mp4" 
         : "video/webm"
+      videoBitrate = 2500000 // 2.5 Mbps
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 2500000, // 2.5 Mbps for mobile - balance between quality and file size
+        videoBitsPerSecond: videoBitrate,
       })
     } else {
       // Desktop: Original working config - mp4 if supported, else webm with vp8
       mimeType = MediaRecorder.isTypeSupported("video/mp4") 
         ? "video/mp4" 
         : "video/webm;codecs=vp8,opus"
+      videoBitrate = 5000000 // 5 Mbps
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
+        videoBitsPerSecond: videoBitrate,
       })
     }
+    
+    console.log("[v0] MediaRecorder config:", { 
+      mimeType, 
+      videoBitrate,
+      mp4Supported: MediaRecorder.isTypeSupported("video/mp4"),
+      webmSupported: MediaRecorder.isTypeSupported("video/webm"),
+    })
 
     mediaRecorder.ondataavailable = (e) => {
+      console.log("[v0] Chunk received:", { size: e.data.size, type: e.data.type })
       if (e.data.size > 0) chunksRef.current.push(e.data)
     }
 
@@ -153,13 +174,28 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
       }
+      const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
+      console.log("[v0] Recording stopped:", { 
+        chunks: chunksRef.current.length, 
+        totalSize,
+        totalSizeMB: (totalSize / 1024 / 1024).toFixed(2) + " MB",
+        mimeType 
+      })
       const blob = new Blob(chunksRef.current, { type: mimeType })
+      console.log("[v0] Blob created:", { size: blob.size, type: blob.type })
       onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder
-    // Start without timeslice - let browser handle data buffering
-    mediaRecorder.start()
+    // Mobile Safari needs timeslice to write proper metadata, but use long interval to avoid timestamp issues
+    // Desktop works better without timeslice
+    const timeslice = isMobileDevice ? 30000 : undefined
+    console.log("[v0] Starting MediaRecorder with timeslice:", timeslice)
+    if (timeslice) {
+      mediaRecorder.start(timeslice)
+    } else {
+      mediaRecorder.start()
+    }
     setIsRecording(true)
     setRecordingTime(0)
 
