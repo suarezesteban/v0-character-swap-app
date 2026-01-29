@@ -263,8 +263,6 @@ export function CharacterGrid({
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
             const canDelete = (isCustom && onDeleteCustom) || (isDefault && onHideDefault)
             const ar = aspectRatios[char.id]
-            // Calculate width based on aspect ratio (height is fixed at 100px mobile, 120px desktop)
-            const isLandscape = ar === "16:9" || ar === "4:3"
             
             return (
               <div key={char.id} className="group relative">
@@ -272,16 +270,14 @@ export function CharacterGrid({
                   onClick={() => onSelect(char.id)}
                   disabled={disabled}
                   data-selected={selectedId === char.id}
-                  className={`relative h-[100px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[120px] ${
-                    isLandscape ? "w-[133px] md:w-[160px]" : "w-[75px] md:w-[90px]"
-                  }`}
+                  className="relative h-[80px] w-[80px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[100px] md:w-[100px]"
                 >
                   <Image
                     src={char.src || "/placeholder.svg"}
                     alt={char.name}
                     fill
-                    className={`object-cover ${isLandscape ? "object-center" : "object-top"}`}
-                    sizes="160px"
+                    className="object-cover object-top"
+                    sizes="100px"
                   />
                   {/* Aspect ratio badge */}
                   {ar && (
@@ -317,7 +313,7 @@ export function CharacterGrid({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || isUploading}
-              className="h-[100px] w-[75px] rounded-lg border border-dashed border-neutral-700 transition-colors hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50 md:h-[120px] md:w-[90px]"
+              className="h-[80px] w-[80px] rounded-lg border border-dashed border-neutral-700 transition-colors hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50 md:h-[100px] md:w-[100px]"
             >
               <div className="flex h-full flex-col items-center justify-center gap-1 text-neutral-500">
                 {isUploading ? (
@@ -368,7 +364,7 @@ export function CharacterGrid({
               onClick={() => setShowAiPrompt(!showAiPrompt)}
               disabled={disabled || isGenerating}
               className={cn(
-                "h-[100px] w-[75px] rounded-lg border border-dashed transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:h-[120px] md:w-[90px]",
+                "h-[80px] w-[80px] rounded-lg border border-dashed transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:h-[100px] md:w-[100px]",
                 showAiPrompt ? "border-white" : "border-neutral-700 hover:border-neutral-500"
               )}
             >
