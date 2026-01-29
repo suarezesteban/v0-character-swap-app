@@ -108,6 +108,9 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     chunksRef.current = []
     
+    // Detect if mobile for adaptive settings
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    
     // Try different formats in order of preference for best compatibility with fal.ai
     // MP4 (H.264) is best supported, then WebM with VP9, then VP8
     let mimeType = "video/webm"
@@ -121,13 +124,13 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       mimeType = "video/webm;codecs=vp8,opus"
     }
     
-    console.log("[v0] MediaRecorder using mimeType:", mimeType)
+    // Mobile needs higher bitrate for fal.ai to detect motion properly
+    // Desktop works fine with lower bitrate
+    const videoBitrate = isMobileDevice ? 8000000 : 5000000 // 8 Mbps mobile, 5 Mbps desktop
     
-    // Use higher bitrate to preserve motion quality (especially important for mobile)
-    // Also request more frequent keyframes for better seeking/processing
     const mediaRecorder = new MediaRecorder(canvasStream, { 
       mimeType,
-      videoBitsPerSecond: 8000000, // 8 Mbps for better quality
+      videoBitsPerSecond: videoBitrate,
     })
 
     mediaRecorder.ondataavailable = (e) => {
@@ -145,8 +148,9 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorderRef.current = mediaRecorder
-    // Request data every 1 second instead of at the end - helps with metadata
-    mediaRecorder.start(1000)
+    // Mobile: request data every 1 second for better metadata handling
+    // Desktop: start without interval for smoother playback
+    mediaRecorder.start(isMobileDevice ? 1000 : undefined)
     setIsRecording(true)
     setRecordingTime(0)
 
