@@ -111,8 +111,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     // Detect if mobile for adaptive settings
     const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
+    let mediaRecorder: MediaRecorder
     let mimeType: string
-    let videoBitrate: number
     
     if (isMobileDevice) {
       // Mobile (iPhone/Android): Use MP4 if available with high bitrate
@@ -121,38 +121,18 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         mimeType = "video/mp4;codecs=avc1"
       } else if (MediaRecorder.isTypeSupported("video/mp4")) {
         mimeType = "video/mp4"
-      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
-        mimeType = "video/webm;codecs=vp9,opus"
-      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
-        mimeType = "video/webm;codecs=vp8,opus"
       } else {
         mimeType = "video/webm"
       }
-      videoBitrate = 8000000 // 8 Mbps for mobile
+      mediaRecorder = new MediaRecorder(canvasStream, { 
+        mimeType,
+        videoBitsPerSecond: 8000000, // 8 Mbps for mobile
+      })
     } else {
-      // Desktop: Try formats in order of compatibility with fal.ai
-      if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
-        mimeType = "video/webm;codecs=vp9,opus"
-      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
-        mimeType = "video/webm;codecs=vp8,opus"
-      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
-        mimeType = "video/webm;codecs=vp9"
-      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
-        mimeType = "video/webm;codecs=vp8"
-      } else if (MediaRecorder.isTypeSupported("video/mp4")) {
-        mimeType = "video/mp4"
-      } else {
-        mimeType = "video/webm"
-      }
-      videoBitrate = 5000000 // 5 Mbps for desktop
+      // Desktop: Use default browser settings - this worked before
+      mimeType = "video/webm"
+      mediaRecorder = new MediaRecorder(canvasStream)
     }
-    
-    console.log("[v0] MediaRecorder config:", { isMobileDevice, mimeType, videoBitrate })
-    
-    const mediaRecorder = new MediaRecorder(canvasStream, { 
-      mimeType,
-      videoBitsPerSecond: videoBitrate,
-    })
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
@@ -170,8 +150,12 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     mediaRecorderRef.current = mediaRecorder
     // Mobile: request data every 1 second for better metadata handling
-    // Desktop: start without interval for smoother playback
-    mediaRecorder.start(isMobileDevice ? 1000 : undefined)
+    // Desktop: start normally without interval
+    if (isMobileDevice) {
+      mediaRecorder.start(1000)
+    } else {
+      mediaRecorder.start()
+    }
     setIsRecording(true)
     setRecordingTime(0)
 
