@@ -35,13 +35,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { characterName, characterImageUrl } = await request.json()
+    const { characterName, characterImageUrl, aspectRatio } = await request.json()
 
     const generationId = await createPendingGeneration({
       userId: session.user.id,
       userEmail: session.user.email,
       characterName,
       characterImageUrl,
+      aspectRatio: aspectRatio || "fill",
     })
 
     return NextResponse.json({ generationId })

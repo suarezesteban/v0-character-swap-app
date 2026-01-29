@@ -38,7 +38,8 @@ export function useVideoGeneration({
     video: Blob,
     character: Character,
     sendEmail: boolean,
-    preUploadedVideoUrl?: string | null
+    preUploadedVideoUrl?: string | null,
+    aspectRatio: "9:16" | "16:9" | "fill" = "fill"
   ) => {
     if (!user) {
       onLoginRequired()
@@ -76,6 +77,7 @@ export function useVideoGeneration({
           body: JSON.stringify({
             characterName: character.name,
             characterImageUrl: character.src,
+            aspectRatio,
           }),
         })
         

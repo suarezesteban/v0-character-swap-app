@@ -55,6 +55,7 @@ interface Generation {
   source_video_url: string | null
   character_name: string | null
   character_image_url: string | null
+  aspect_ratio: "9:16" | "16:9" | "fill"
   status: "uploading" | "pending" | "processing" | "completed" | "failed" | "cancelled"
   created_at: string
   completed_at: string | null
@@ -62,7 +63,7 @@ interface Generation {
 }
 
 interface GenerationsPanelProps {
-  onSelectVideo?: (videoUrl: string, sourceVideoUrl: string | null) => void
+  onSelectVideo?: (videoUrl: string, sourceVideoUrl: string | null, aspectRatio: "9:16" | "16:9" | "fill") => void
   className?: string
 }
 
@@ -214,7 +215,7 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
               <button
-                onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url)}
+                onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.aspect_ratio || "fill")}
                 className="group relative h-full w-full"
               >
                 <video

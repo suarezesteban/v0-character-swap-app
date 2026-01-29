@@ -10,6 +10,7 @@ export interface Generation {
   source_video_url: string | null
   character_name: string | null
   character_image_url: string | null
+  aspect_ratio: "9:16" | "16:9" | "fill"
   status: "uploading" | "processing" | "completed" | "failed" | "cancelled"
   run_id: string | null
   error_message: string | null
@@ -38,10 +39,11 @@ export async function createPendingGeneration(data: {
   userEmail?: string
   characterName?: string
   characterImageUrl?: string
+  aspectRatio?: "9:16" | "16:9" | "fill"
 }) {
   const result = await sql`
-    INSERT INTO generations (user_id, user_email, character_name, character_image_url, status)
-    VALUES (${data.userId}, ${data.userEmail || null}, ${data.characterName || null}, ${data.characterImageUrl || null}, 'uploading')
+    INSERT INTO generations (user_id, user_email, character_name, character_image_url, aspect_ratio, status)
+    VALUES (${data.userId}, ${data.userEmail || null}, ${data.characterName || null}, ${data.characterImageUrl || null}, ${data.aspectRatio || "fill"}, 'uploading')
     RETURNING id
   `
   return result[0]?.id

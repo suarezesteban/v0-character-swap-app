@@ -106,11 +106,11 @@ export default function Home() {
       const character = allCharacters.find(c => c.id === selectedCharacter)
       if (character) {
         setTimeout(() => {
-          processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl)
+          processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl, recordedAspectRatio)
         }, 100)
       }
     }
-  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl])
+  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl, recordedAspectRatio])
 
   // Auto-expand bottom sheet when video is recorded
   useEffect(() => {
@@ -124,9 +124,9 @@ export default function Home() {
     if (!recordedVideo || !selectedCharacter) return
     const character = allCharacters.find(c => c.id === selectedCharacter)
     if (character) {
-      processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl)
+      processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl, recordedAspectRatio)
     }
-  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl])
+  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl, recordedAspectRatio])
 
   const handleReset = useCallback(() => {
     clearRecording()
@@ -211,11 +211,11 @@ export default function Home() {
       {/* Camera/Video Section */}
       <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (recordedAspectRatio === "fill" ? "p-0" : "p-2") : (currentAspectRatio === "fill" ? "p-0" : "p-2")}`}>
         {resultUrl ? (
-          <div className={`relative flex h-full w-full ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
+          <div className={`relative flex h-full w-full ${(selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "fill" ? "" : "items-center justify-center"}`}>
             <div className={`relative overflow-hidden bg-neutral-900 ${
-              recordedAspectRatio === "9:16"
+              (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "9:16"
                 ? "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-2xl"
-                : recordedAspectRatio === "16:9"
+                : (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "16:9"
                   ? "aspect-video w-full max-w-4xl rounded-2xl"
                   : "h-full w-full"
             }`}>
@@ -274,9 +274,9 @@ export default function Home() {
                   {/* PiP overlay - show original video */}
                   {showPip && (
                     <div className={`overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
-                      recordedAspectRatio === "9:16" 
+                      (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "9:16" 
                         ? "aspect-[9/16] h-32 md:h-40" 
-                        : recordedAspectRatio === "16:9"
+                        : (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "16:9"
                           ? "aspect-video w-32 md:w-48"
                           : "aspect-video w-32 md:w-48"
                     }`}>
@@ -436,10 +436,11 @@ export default function Home() {
                 onSendViaEmailChange={setSendViaEmail}
               >
                 <GenerationsPanel
-                onSelectVideo={(url, sourceUrl) => {
+                onSelectVideo={(url, sourceUrl, aspectRatio) => {
                   setSelectedGeneratedVideo(url)
                   setResultUrl(url)
                   setSourceVideoUrl(sourceUrl)
+                  setCurrentAspectRatio(aspectRatio)
                 }}
                 className="mt-4 border-t border-neutral-800 pt-4"
               />
