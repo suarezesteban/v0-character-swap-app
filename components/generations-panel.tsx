@@ -228,10 +228,17 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
       </p>
       
       <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {generations.filter(g => g.status !== "cancelled").map((gen) => (
+        {generations.filter(g => g.status !== "cancelled").map((gen) => {
+          // Determine thumbnail width based on aspect ratio
+          const isLandscape = gen.aspect_ratio === "16:9"
+          const thumbnailClass = isLandscape 
+            ? "h-16 w-[85px] md:h-20 md:w-[107px]" // 16:9 ratio
+            : "h-16 w-11 md:h-20 md:w-14" // portrait/fill
+          
+          return (
           <div
             key={gen.id}
-            className="relative h-16 w-11 shrink-0 overflow-hidden rounded-md bg-neutral-900 ring-1 ring-neutral-800 md:h-20 md:w-14 md:rounded-lg"
+            className={`relative shrink-0 overflow-hidden rounded-md bg-neutral-900 ring-1 ring-neutral-800 md:rounded-lg ${thumbnailClass}`}
           >
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
@@ -282,7 +289,8 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
