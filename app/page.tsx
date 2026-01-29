@@ -21,13 +21,12 @@ export default function Home() {
   // State
   const [mounted, setMounted] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [sendViaEmail, setSendViaEmail] = useState(true)
+
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null)
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<string | null>(null)
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
-  const [emailSent] = useState(false)
   // Detected aspect ratio of the generated video (from character image)
   const [generatedVideoAspectRatio, setGeneratedVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isDownloading, setIsDownloading] = useState(false)
@@ -107,11 +106,11 @@ export default function Home() {
       const character = allCharacters.find(c => c.id === selectedCharacter)
       if (character) {
         setTimeout(() => {
-          processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl, recordedAspectRatio)
+          processVideo(recordedVideo, character, false, uploadedVideoUrl, recordedAspectRatio)
         }, 100)
       }
     }
-  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl, recordedAspectRatio])
+  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio])
 
   // Auto-expand bottom sheet when video is recorded
   useEffect(() => {
@@ -125,9 +124,9 @@ export default function Home() {
     if (!recordedVideo || !selectedCharacter) return
     const character = allCharacters.find(c => c.id === selectedCharacter)
     if (character) {
-      processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl, recordedAspectRatio)
+      processVideo(recordedVideo, character, false, uploadedVideoUrl, recordedAspectRatio)
     }
-  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl, recordedAspectRatio])
+  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio])
 
   const handleReset = useCallback(() => {
     clearRecording()
@@ -265,7 +264,7 @@ export default function Home() {
               />
               {/* PiP container - groups toggle button and overlay together */}
               {(sourceVideoUrl || recordedVideoUrl) && (
-                <div className="absolute bottom-20 right-4 flex flex-col items-end gap-2">
+                <div className="absolute bottom-32 right-4 flex flex-col items-end gap-2">
                   {/* PiP toggle button */}
                   <button
                     onClick={() => setShowPip(!showPip)}
@@ -383,7 +382,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="rounded-full bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
+                  className="whitespace-nowrap rounded-full bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
                 >
                   New Video
                 </button>
@@ -392,7 +391,7 @@ export default function Home() {
           </div>
         ) : recordedVideoUrl ? (
           <div 
-            className={`relative flex h-full w-full ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}
+            className="relative flex h-full w-full"
             onClick={(e) => {
               // If clicked outside the video container, go back to recording
               if (e.target === e.currentTarget) {
@@ -401,13 +400,7 @@ export default function Home() {
               }
             }}
           >
-            <div className={`relative overflow-hidden bg-neutral-900 ${
-              recordedAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[95vh] w-auto rounded-2xl"
-                : recordedAspectRatio === "16:9"
-                  ? "aspect-video w-full max-w-4xl rounded-2xl"
-                  : "h-full w-full"
-            }`}>
+            <div className="relative h-full w-full overflow-hidden bg-neutral-900">
               <video 
                 src={recordedVideoUrl} 
                 controls 
@@ -458,8 +451,7 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-                sendViaEmail={sendViaEmail}
-                onSendViaEmailChange={setSendViaEmail}
+
               >
                 <GenerationsPanel
                 onSelectVideo={(url, sourceUrl, aspectRatio) => {
@@ -529,8 +521,7 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-                sendViaEmail={sendViaEmail}
-                onSendViaEmailChange={setSendViaEmail}
+
               >
                 <GenerationsPanel
                   onSelectVideo={(url, sourceUrl) => {
@@ -576,13 +567,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Toast */}
-      {emailSent && (
-        <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-neutral-900 px-4 py-2 shadow-lg">
-          <p className="font-sans text-[13px] text-white">Email sent successfully</p>
-        </div>
-      )}
-      
+
       {/* Error Toast */}
       {errorToast && (
         <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-red-900 px-4 py-2 shadow-lg">
