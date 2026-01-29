@@ -27,7 +27,14 @@ async function requestNotificationPermission(): Promise<boolean> {
 
 // Show notification when video is ready
 function showVideoReadyNotification(characterName: string | null) {
+  console.log("[v0] showVideoReadyNotification called", {
+    hasNotificationAPI: "Notification" in window,
+    permission: "Notification" in window ? Notification.permission : "N/A",
+    characterName
+  })
+  
   if (!("Notification" in window) || Notification.permission !== "granted") {
+    console.log("[v0] Notification blocked - no API or permission denied")
     return
   }
   
@@ -98,19 +105,33 @@ export function GenerationsPanel({ onSelectVideo, className = "" }: GenerationsP
   useEffect(() => {
     const prevGenerations = prevGenerationsRef.current
     
+    console.log("[v0] Checking generations for completion", {
+      prevCount: prevGenerations.length,
+      currentCount: generations.length,
+      prevStatuses: prevGenerations.map(g => ({ id: g.id, status: g.status })),
+      currentStatuses: generations.map(g => ({ id: g.id, status: g.status })),
+    })
+    
     // Check if any generation just completed
     for (const gen of generations) {
       if (gen.status === "completed") {
         const prevGen = prevGenerations.find(p => p.id === gen.id)
+        console.log("[v0] Found completed generation", { 
+          id: gen.id, 
+          prevStatus: prevGen?.status,
+          currentStatus: gen.status,
+          willNotify: prevGen && prevGen.status !== "completed"
+        })
         if (prevGen && prevGen.status !== "completed") {
           // This generation just completed!
+          console.log("[v0] Showing notification for", gen.character_name)
           showVideoReadyNotification(gen.character_name)
         }
       }
     }
     
-    // Update ref for next comparison
-    prevGenerationsRef.current = generations
+    // Update ref for next comparison - make a copy to avoid reference issues
+    prevGenerationsRef.current = [...generations]
   }, [generations])
 
   // Poll only when there are pending generations
