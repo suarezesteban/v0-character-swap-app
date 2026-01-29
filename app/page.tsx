@@ -31,6 +31,7 @@ export default function Home() {
   const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
+  const [showPip, setShowPip] = useState(true)
 
   // Video refs for sync
   const mainVideoRef = useRef<HTMLVideoElement>(null)
@@ -252,8 +253,25 @@ export default function Home() {
                   }
                 }}
               />
-              {/* PiP overlay - show original video in bottom right */}
+              {/* PiP toggle */}
               {(sourceVideoUrl || recordedVideoUrl) && (
+                <button
+                  onClick={() => setShowPip(!showPip)}
+                  className={`absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] backdrop-blur-md transition-all ${
+                    showPip 
+                      ? "bg-white text-black" 
+                      : "bg-black/50 text-white hover:bg-black/60"
+                  }`}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <rect x="12" y="10" width="8" height="5" rx="1" />
+                  </svg>
+                  {showPip ? "PiP on" : "PiP off"}
+                </button>
+              )}
+              {/* PiP overlay - show original video in bottom right */}
+              {showPip && (sourceVideoUrl || recordedVideoUrl) && (
                 <div className={`absolute bottom-20 right-4 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
                   recordedAspectRatio === "9:16" 
                     ? "aspect-[9/16] h-32 md:h-40" 
@@ -278,8 +296,8 @@ export default function Home() {
                   onClick={async () => {
                     const pipSource = sourceVideoUrl || recordedVideoUrl
                     
-                    // If we have a PiP source, create video with PiP overlay
-                    if (pipSource) {
+                    // If we have a PiP source and PiP is enabled, create video with PiP overlay
+                    if (showPip && pipSource) {
                       try {
                         setIsDownloading(true)
                         setDownloadProgress(0)
