@@ -287,12 +287,6 @@ export function CharacterGrid({
                     placeholder="blur"
                     blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAUH/8QAIhAAAgEDAwUBAAAAAAAAAAAAAQIDAAQRBRIhBhMiMUFR/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAZEQACAwEAAAAAAAAAAAAAAAABAgADESH/2gAMAwEAAhEDEEA/AKek6hY2+mWkM8qJMkKrIpbBDAYIOKVd"
                   />
-                  {/* Aspect ratio badge */}
-                  {ar && (
-                    <div className="absolute right-1 top-1 rounded bg-black/70 px-1 py-0.5 font-mono text-[8px] text-white/80 backdrop-blur-sm">
-                      {ar}
-                    </div>
-                  )}
                 </button>
                 {canDelete && !disabled && (
                   <button
