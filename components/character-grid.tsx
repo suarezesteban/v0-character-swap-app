@@ -251,20 +251,13 @@ export function CharacterGrid({
       )}
       
       <div className="-ml-1 shrink overflow-y-auto pl-1 md:min-h-0 md:flex-1">
-        <div className="mb-3 flex items-center gap-2 md:mb-4">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-neutral-800/80">
-            <svg className="h-3.5 w-3.5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
-          </div>
-          <p className="font-mono text-[11px] font-medium uppercase tracking-wider text-neutral-400 md:text-xs">
-            Select Character
-          </p>
-        </div>
+        <p className="mb-2 font-mono text-[10px] lowercase text-neutral-500 md:mb-3 md:text-[11px]">
+          select character
+        </p>
         
         {/* Grid container - flex wrap with fixed height */}
         <div className="-mr-1 -mt-1 pr-1 pt-1">
-          <div className="flex flex-wrap gap-2 md:gap-3">
+          <div className="flex flex-wrap gap-1.5 md:gap-3">
           {allCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
@@ -279,22 +272,20 @@ export function CharacterGrid({
                   onClick={() => onSelect(char.id)}
                   disabled={disabled}
                   data-selected={selectedId === char.id}
-                  className={`group/card relative overflow-hidden rounded-xl bg-neutral-900 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-black/20 data-[selected=true]:ring-2 data-[selected=true]:ring-white data-[selected=true]:ring-offset-1 data-[selected=true]:ring-offset-neutral-950 disabled:cursor-not-allowed disabled:opacity-50 ${
-                    isLandscape ? "h-[60px] w-[107px] md:h-[68px] md:w-[121px]" : "h-[60px] w-[45px] md:h-[68px] md:w-[51px]"
+                  className={`relative h-[72px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[80px] ${
+                    isLandscape ? "w-[96px] md:w-[107px]" : "w-[54px] md:w-[60px]"
                   }`}
                 >
                   <Image
                     src={char.src || "/placeholder.svg"}
                     alt={char.name}
                     fill
-                    className={`object-cover transition-transform duration-200 group-hover/card:scale-105 ${isLandscape ? "object-center" : "object-top"}`}
+                    className={`object-cover ${isLandscape ? "object-center" : "object-top"}`}
                     sizes="160px"
                   />
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 transition-opacity group-hover/card:opacity-100" />
                   {/* Aspect ratio badge */}
                   {ar && (
-                    <div className="absolute right-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 font-mono text-[7px] font-medium text-white/90 backdrop-blur-md">
+                    <div className="absolute right-1 top-1 rounded bg-black/70 px-1 py-0.5 font-mono text-[8px] text-white/80 backdrop-blur-sm">
                       {ar}
                     </div>
                   )}
@@ -326,57 +317,46 @@ export function CharacterGrid({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={disabled || isUploading}
-              className="group/upload h-[60px] w-[60px] rounded-xl border-2 border-dashed border-neutral-700 bg-neutral-900/50 transition-all duration-200 hover:border-neutral-500 hover:bg-neutral-800/50 disabled:cursor-not-allowed disabled:opacity-50 md:h-[68px] md:w-[68px]"
+              className="h-[72px] w-[54px] rounded-lg border border-dashed border-neutral-700 transition-colors hover:border-neutral-500 disabled:cursor-not-allowed disabled:opacity-50 md:h-[80px] md:w-[60px]"
             >
-              <div className="flex h-full flex-col items-center justify-center gap-1.5 text-neutral-500 transition-colors group-hover/upload:text-neutral-300">
+              <div className="flex h-full flex-col items-center justify-center gap-1 text-neutral-500">
                 {isUploading ? (
                   <>
-                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
+                    <span className="font-mono text-[9px] lowercase">uploading...</span>
                   </>
                 ) : (
                   <>
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                    <span className="font-mono text-[8px] font-medium uppercase tracking-wide">Upload</span>
+                    <span className="font-mono text-[9px] lowercase">upload</span>
                   </>
                 )}
               </div>
             </button>
             {/* Info icon with tooltip */}
             <div 
-              className="absolute -right-1.5 -top-1.5"
+              className="absolute -right-1 -top-1"
               onMouseEnter={() => setShowUploadTooltip(true)}
               onMouseLeave={() => setShowUploadTooltip(false)}
             >
-              <div className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-neutral-700 bg-neutral-800 text-neutral-400 shadow-sm transition-colors hover:border-neutral-600 hover:bg-neutral-700 hover:text-neutral-200">
-                <span className="font-mono text-[10px] font-medium">?</span>
+              <div className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-neutral-800 text-neutral-500 transition-colors hover:bg-neutral-700 hover:text-neutral-300">
+                <span className="font-mono text-[9px]">?</span>
               </div>
               {showUploadTooltip && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-xl border border-neutral-800 bg-neutral-900/95 p-4 shadow-xl backdrop-blur-sm">
-                  <p className="mb-2 font-mono text-[10px] font-medium uppercase tracking-wide text-neutral-300">
-                    Image Requirements
+                <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-lg bg-neutral-900 p-3 shadow-lg ring-1 ring-neutral-800">
+                  <p className="font-mono text-[10px] leading-relaxed text-neutral-400">
+                    <span className="text-neutral-300">image requirements:</span><br />
+                    - clear frontal face<br />
+                    - upper body visible<br />
+                    - no sunglasses/masks<br />
+                    - good lighting<br />
+                    - min 340x340px
                   </p>
-                  <ul className="space-y-1 font-mono text-[10px] leading-relaxed text-neutral-500">
-                    <li className="flex items-center gap-2">
-                      <span className="text-green-500">&#10003;</span> Clear frontal face
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-green-500">&#10003;</span> Upper body visible
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-green-500">&#10003;</span> No sunglasses/masks
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-green-500">&#10003;</span> Good lighting
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-green-500">&#10003;</span> Min 340x340px
-                    </li>
-                  </ul>
                 </div>
               )}
             </div>
@@ -388,29 +368,25 @@ export function CharacterGrid({
               onClick={() => setShowAiPrompt(!showAiPrompt)}
               disabled={disabled || isGenerating}
               className={cn(
-                "group/ai h-[60px] w-[60px] rounded-xl border-2 border-dashed transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 md:h-[68px] md:w-[68px]",
-                showAiPrompt 
-                  ? "border-white bg-white/10" 
-                  : "border-neutral-700 bg-neutral-900/50 hover:border-neutral-500 hover:bg-neutral-800/50"
+                "h-[72px] w-[54px] rounded-lg border border-dashed transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:h-[80px] md:w-[60px]",
+                showAiPrompt ? "border-white" : "border-neutral-700 hover:border-neutral-500"
               )}
             >
-              <div className={cn(
-                "flex h-full flex-col items-center justify-center gap-1.5 transition-colors",
-                showAiPrompt ? "text-white" : "text-neutral-500 group-hover/ai:text-neutral-300"
-              )}>
+              <div className="flex h-full flex-col items-center justify-center gap-1 text-neutral-500">
                 {isGenerating ? (
                   <>
-                    <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
+                    <span className="font-mono text-[9px] lowercase">creating...</span>
                   </>
                 ) : (
                   <>
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
                     </svg>
-                    <span className="font-mono text-[8px] font-medium uppercase tracking-wide">AI</span>
+                    <span className="font-mono text-[9px] lowercase">ai create</span>
                   </>
                 )}
               </div>
@@ -429,24 +405,21 @@ export function CharacterGrid({
         
         {/* AI Prompt Bar - shows inline below the grid */}
         {showAiPrompt && (
-          <div className="mt-4 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900/80 p-4 backdrop-blur-sm">
+          <div className="mt-3 rounded-lg bg-neutral-900 p-3">
             {isGenerating ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                  <p className="font-mono text-[11px] text-neutral-400">
-                    Generating with <span className="font-medium text-white">Nano Banana Pro</span>
-                  </p>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+              <div className="space-y-2">
+                <p className="font-mono text-[11px] text-neutral-400">
+                  Generating with <span className="text-white">Nano Banana Pro</span>...
+                </p>
+                <div className="h-px w-full overflow-hidden bg-neutral-800">
                   <div 
-                    className="h-full rounded-full bg-gradient-to-r from-white to-neutral-400 transition-all duration-100 ease-linear"
+                    className="h-full bg-white transition-all duration-100 ease-linear"
                     style={{ width: `${generationProgress}%` }}
                   />
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <input
                   id="ai-prompt-input"
                   type="text"
@@ -458,20 +431,17 @@ export function CharacterGrid({
                       handleGenerate()
                     }
                   }}
-                  placeholder="Describe a character..."
+                  placeholder="describe a character..."
                   disabled={disabled}
                   autoFocus
-                  className="h-10 flex-1 rounded-lg border border-neutral-700 bg-neutral-800/50 px-4 font-mono text-[12px] text-white placeholder-neutral-500 outline-none transition-all focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 disabled:opacity-50"
+                  className="h-8 flex-1 rounded-md border-0 bg-neutral-800 px-3 font-mono text-[12px] text-white placeholder-neutral-500 outline-none transition-colors focus:ring-1 focus:ring-neutral-600 disabled:opacity-50"
                 />
                 <button
                   onClick={handleGenerate}
                   disabled={disabled || !prompt.trim()}
-                  className="flex h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 font-mono text-[11px] font-medium uppercase tracking-wide text-black transition-all hover:bg-neutral-200 disabled:opacity-30"
+                  className="flex h-8 items-center justify-center rounded-md bg-white px-3 font-mono text-[11px] text-black transition-opacity hover:opacity-80 disabled:opacity-30"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                  </svg>
-                  Generate
+                  go
                 </button>
               </div>
             )}
