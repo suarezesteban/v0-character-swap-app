@@ -223,7 +223,7 @@ export function CharacterGrid({
         </p>
         
         {/* Extra padding to prevent ring clipping on selected items */}
-        <div className="-mx-1 px-1">
+        <div className="-mx-1 -mt-1 px-1 pt-1">
           <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
           {allCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
