@@ -18,10 +18,10 @@ importers:
         specifier: 1.8.3
         version: 1.8.3
       '@ffmpeg/ffmpeg':
-        specifier: 0.12.10
+        specifier: ^0.12.10
         version: 0.12.10
       '@ffmpeg/util':
-        specifier: 0.12.1
+        specifier: ^0.12.1
         version: 0.12.1
       '@hookform/resolvers':
         specifier: ^3.10.0
