@@ -257,7 +257,7 @@ export default function Home() {
                   {/* PiP toggle button */}
                   <button
                     onClick={() => setShowPip(!showPip)}
-                    className={`flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] backdrop-blur-md transition-all ${
+                    className={`flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] backdrop-blur-md transition-all ${
                       showPip 
                         ? "bg-white text-black" 
                         : "bg-black/50 text-white hover:bg-black/60"
@@ -349,7 +349,7 @@ export default function Home() {
                       }
                     }
                   }}
-                  className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl transition-all hover:bg-neutral-100 active:scale-95 disabled:opacity-70"
+                  className="flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl transition-all hover:bg-neutral-100 active:scale-95 disabled:opacity-70"
                 >
                   {isDownloading ? (
                     <>
@@ -370,7 +370,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="whitespace-nowrap rounded-full bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
+                  className="whitespace-nowrap rounded-lg bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
                 >
                   New Video
                 </button>
@@ -409,7 +409,7 @@ export default function Home() {
                   setShowPreview(false)
                   clearRecording()
                 }}
-                className="absolute bottom-28 left-1/2 -translate-x-1/2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95 md:bottom-6"
+                className="absolute bottom-28 left-1/2 -translate-x-1/2 rounded-lg bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95 md:bottom-6"
               >
                 New Video
               </button>
@@ -530,7 +530,7 @@ export default function Home() {
       {/* Login Modal */}
       {showLoginModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-neutral-900 p-6">
+          <div className="mx-4 w-full max-w-sm rounded-lg bg-neutral-900 p-6">
             <h2 className="mb-2 font-sans text-lg font-semibold text-white">Sign in to generate</h2>
             <p className="mb-6 font-sans text-[13px] text-neutral-400">
               Create an account to generate your video. Your recording and character selection will be saved.
@@ -559,7 +559,7 @@ export default function Home() {
 
       {/* Error Toast */}
       {errorToast && (
-        <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-red-900 px-4 py-2 shadow-lg">
+          <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-lg bg-red-900 px-4 py-2 shadow-lg">
           <p className="font-sans text-[13px] text-white">{errorToast}</p>
         </div>
       )}
