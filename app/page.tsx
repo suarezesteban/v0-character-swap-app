@@ -168,7 +168,7 @@ export default function Home() {
     
     if (user) {
       return (
-        <div className="mb-4 flex items-center justify-between border-b border-neutral-800 pb-4">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {user.avatar ? (
               <Image src={user.avatar || "/placeholder.svg"} alt={user.name || ""} width={20} height={20} className="h-5 w-5 rounded-full" />
@@ -194,7 +194,7 @@ export default function Home() {
     return (
       <button
         onClick={login}
-        className="mb-4 flex items-center gap-2 border-b border-neutral-800 pb-4 font-mono text-[11px] text-neutral-500 transition-colors hover:text-white"
+        className="mb-4 flex items-center gap-2 font-mono text-[11px] text-neutral-500 transition-colors hover:text-white"
       >
         <svg className="h-3 w-3" viewBox="0 0 76 65" fill="currentColor">
           <path d="M37.5274 0L75.0548 65H0L37.5274 0Z" />
@@ -460,7 +460,7 @@ export default function Home() {
                   setSourceVideoUrl(sourceUrl)
                   setCurrentAspectRatio(aspectRatio)
                 }}
-                className="mt-4 border-t border-neutral-800 pt-4"
+                className="mt-4"
               />
             </CharacterGrid>
           </div>
@@ -530,7 +530,7 @@ export default function Home() {
                     setSourceVideoUrl(sourceUrl)
                     setBottomSheetExpanded(false)
                   }}
-                  className="mt-4 border-t border-neutral-800 pt-4"
+                  className="mt-4"
                 />
               </CharacterGrid>
             </>
