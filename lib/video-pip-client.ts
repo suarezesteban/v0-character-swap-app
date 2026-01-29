@@ -26,6 +26,7 @@ export interface PipOptions {
   pipVideoUrl?: string | null
   pipPosition?: "bottom-right" | "bottom-left" | "top-right" | "top-left"
   pipScale?: number // 0.0 to 1.0, default 0.25
+  pipAspectRatio?: "9:16" | "16:9" | "fill" // aspect ratio of pip video
   onProgress?: (progress: number) => void
   addWatermark?: boolean
 }
@@ -35,6 +36,7 @@ export async function createPipVideoClient({
   pipVideoUrl,
   pipPosition = "bottom-right",
   pipScale = 0.2,
+  pipAspectRatio = "9:16",
   onProgress,
   addWatermark = true,
 }: PipOptions): Promise<Blob> {
@@ -96,8 +98,30 @@ export async function createPipVideoClient({
   let filterComplex = ""
   
   if (pipData) {
-    // With PiP overlay
-    filterComplex = `[1:v]scale=iw*${pipScale}:ih*${pipScale}[pip];[0:v][pip]overlay=${overlayPosition}:shortest=1`
+    // Calculate PiP dimensions based on aspect ratio
+    // For 9:16, we want height-based scaling; for 16:9, width-based
+    // Using main video height (H) as reference, PiP height = H * pipScale
+    let pipScaleFilter: string
+    const cornerRadius = 12 // rounded corners radius in pixels
+    
+    if (pipAspectRatio === "9:16") {
+      // Height is the reference, width = height * 9/16
+      // Scale to a fixed height based on pipScale, maintain 9:16 ratio
+      pipScaleFilter = `scale=-1:ih*${pipScale}:force_original_aspect_ratio=decrease,crop=trunc(ih*9/16/2)*2:ih`
+    } else if (pipAspectRatio === "16:9") {
+      // Width is the reference
+      pipScaleFilter = `scale=iw*${pipScale}:-1:force_original_aspect_ratio=decrease,crop=iw:trunc(iw*9/16/2)*2`
+    } else {
+      // Fill - maintain original aspect ratio
+      pipScaleFilter = `scale=iw*${pipScale}:ih*${pipScale}`
+    }
+    
+    // Add rounded corners using format and geq filter for alpha masking
+    // Create rounded rectangle mask effect with drawbox and overlay
+    const roundedFilter = `format=yuva420p,geq=lum='lum(X,Y)':cb='cb(X,Y)':cr='cr(X,Y)':a='if(gt(abs(W/2-X),W/2-${cornerRadius})*gt(abs(H/2-Y),H/2-${cornerRadius}),(1-ceil(hypot(abs(W/2-X)-(W/2-${cornerRadius}),abs(H/2-Y)-(H/2-${cornerRadius}))-${cornerRadius}))*255,255)'`
+    
+    // With PiP overlay and rounded corners
+    filterComplex = `[1:v]${pipScaleFilter},${roundedFilter}[pip];[0:v][pip]overlay=${overlayPosition}:shortest=1`
     if (addWatermark && watermarkFilter) {
       filterComplex += `[vid];[vid]${watermarkFilter}`
     }
