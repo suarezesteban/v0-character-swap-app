@@ -310,6 +310,7 @@ export default function Home() {
                           pipVideoUrl: pipSource,
                           pipPosition: "bottom-right",
                           pipScale: 0.25,
+                          pipAspectRatio: selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio,
                           addWatermark: true,
                           onProgress: setDownloadProgress,
                         })

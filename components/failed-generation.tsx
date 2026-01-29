@@ -23,15 +23,43 @@ interface FailedGenerationProps {
   onDelete: (e: React.MouseEvent) => void
 }
 
+// Map technical errors to user-friendly messages
+function getUserFriendlyError(errorMessage: string | null): string {
+  if (!errorMessage) return "Something went wrong. Please try again."
+  
+  // Motion/movement related errors
+  if (errorMessage.toLowerCase().includes("motion") || errorMessage.toLowerCase().includes("continuous")) {
+    return "Try recording with more movement - look around, nod, or gesture while recording."
+  }
+  
+  // Face detection errors
+  if (errorMessage.toLowerCase().includes("face") || errorMessage.toLowerCase().includes("detect")) {
+    return "Make sure your face is clearly visible and well-lit in the video."
+  }
+  
+  // Duration errors
+  if (errorMessage.toLowerCase().includes("duration") || errorMessage.toLowerCase().includes("short")) {
+    return "Try recording a slightly longer video with continuous movement."
+  }
+  
+  // Quality errors
+  if (errorMessage.toLowerCase().includes("quality") || errorMessage.toLowerCase().includes("resolution")) {
+    return "Try recording in better lighting conditions."
+  }
+  
+  // Default: show original but cleaned up
+  return errorMessage.replace(/^The input was rejected,?\s*/i, "").trim() || "Something went wrong. Please try again."
+}
+
 export function FailedGeneration({ gen, onDelete }: FailedGenerationProps) {
   const [isOpen, setIsOpen] = useState(false)
   
-  const errorMessage = gen.error_message || (gen.status === "cancelled" ? "Cancelled by user" : "Generation failed")
+  const friendlyError = gen.status === "cancelled" 
+    ? "Cancelled by user" 
+    : getUserFriendlyError(gen.error_message)
   const shortMessage = gen.status === "cancelled" 
     ? "Cancelled" 
-    : (gen.error_message 
-        ? gen.error_message.slice(0, 15) + (gen.error_message.length > 15 ? "..." : "") 
-        : "Failed")
+    : "Failed"
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -60,7 +88,7 @@ export function FailedGeneration({ gen, onDelete }: FailedGenerationProps) {
             </span>
           </div>
           <p className="mb-3 font-sans text-xs leading-relaxed text-neutral-300">
-            {errorMessage}
+            {friendlyError}
           </p>
           <button
             onClick={(e) => {

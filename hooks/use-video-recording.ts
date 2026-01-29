@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { upload } from "@vercel/blob/client"
-import { MAX_VIDEO_SIZE, MAX_VIDEO_DURATION, MIN_VIDEO_DURATION, STORAGE_KEYS } from "@/lib/constants"
+import { MAX_VIDEO_SIZE, MAX_VIDEO_DURATION, STORAGE_KEYS } from "@/lib/constants"
 
 interface UseVideoRecordingReturn {
   recordedVideo: Blob | null
@@ -68,18 +68,10 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     video.onloadedmetadata = () => {
       URL.revokeObjectURL(video.src)
       
-      // Use Math.floor for min check and Math.ceil for max check to be more permissive
-      // This handles slight timing variations in recording
-      const durationSeconds = Math.round(video.duration)
-      
-      if (durationSeconds < MIN_VIDEO_DURATION) {
-        alert(`Video is too short (${durationSeconds}s). Please record between 3-30 seconds.`)
-        return
-      }
-      
       // Allow up to 31 seconds to account for timing variations
       if (video.duration > MAX_VIDEO_DURATION + 1) {
-        alert(`Video is too long (${durationSeconds}s). Please record between 3-30 seconds.`)
+        const durationSeconds = Math.round(video.duration)
+        alert(`Video is too long (${durationSeconds}s). Please record up to ${MAX_VIDEO_DURATION} seconds.`)
         return
       }
       

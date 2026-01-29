@@ -19,10 +19,12 @@ export const MIN_IMAGE_DIMENSION = 340 // pixels - fal.ai minimum
 // ===========================================
 
 export const DEFAULT_CHARACTERS: Character[] = [
-  { id: 1, src: "/characters/character-1.jpg", name: "Rauchg" },
-  { id: 2, src: "/characters/character-2.jpg", name: "Superman" },
-  { id: 3, src: "/characters/character-3.jpg", name: "Curly" },
-  { id: 4, src: "/characters/character-11.jpg", name: "Suit" },
+  { id: 1, src: "/characters/rauch.png", name: "Rauchg" },
+  { id: 2, src: "/characters/leo.png", name: "Django" },
+  { id: 3, src: "/characters/bernie.png", name: "Bernie" },
+  { id: 4, src: "/characters/think.png", name: "Think" },
+  { id: 5, src: "/characters/aliens.png", name: "Aliens" },
+  { id: 6, src: "/characters/jdvance.png", name: "JD Vance" },
 ]
 
 // Alias for backwards compatibility
