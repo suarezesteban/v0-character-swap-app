@@ -295,6 +295,7 @@ export default function Home() {
                     {showPip ? "PiP on" : "PiP off"}
                   </button>
                   {/* PiP overlay - show original video with its actual aspect ratio */}
+                  {showPip && console.log("[v0] PiP recordedAspectRatio:", recordedAspectRatio)}
                   {showPip && (
                     <div className={`overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
                       recordedAspectRatio === "9:16" 
