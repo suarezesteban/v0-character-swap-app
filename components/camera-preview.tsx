@@ -129,12 +129,9 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         videoBitsPerSecond: 8000000, // 8 Mbps for mobile
       })
     } else {
-      // Desktop: Use WebM with VP8 codec - this is what worked before
-      mimeType = "video/webm;codecs=vp8,opus"
-      mediaRecorder = new MediaRecorder(canvasStream, {
-        mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
-      })
+      // Desktop: Let browser choose best format, no custom options
+      mimeType = "video/webm"
+      mediaRecorder = new MediaRecorder(canvasStream)
     }
 
     mediaRecorder.ondataavailable = (e) => {
