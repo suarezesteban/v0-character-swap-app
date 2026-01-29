@@ -69,7 +69,7 @@ export async function createPipVideoClient({
   const overlayPosition = positionMap[pipPosition]
   
   // Watermark text - positioned at bottom left with some padding
-  const watermarkText = "Generated with: v0-mimicme.vercel.app"
+  const watermarkText = "Generated with Mimic Me: mimicme.vercel.app"
   // Escape special characters for ffmpeg drawtext
   const escapedText = watermarkText.replace(/:/g, "\\:")
   
