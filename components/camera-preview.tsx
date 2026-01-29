@@ -123,17 +123,31 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         mimeType = "video/mp4"
       } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
         mimeType = "video/webm;codecs=vp9,opus"
-      } else {
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
         mimeType = "video/webm;codecs=vp8,opus"
+      } else {
+        mimeType = "video/webm"
       }
       videoBitrate = 8000000 // 8 Mbps for mobile
     } else {
-      // Desktop: Use original config that worked well (WebM VP8, 5 Mbps)
-      mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-        ? "video/webm;codecs=vp8,opus"
-        : "video/webm"
+      // Desktop: Try formats in order of compatibility with fal.ai
+      if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")) {
+        mimeType = "video/webm;codecs=vp9,opus"
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")) {
+        mimeType = "video/webm;codecs=vp8,opus"
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        mimeType = "video/webm;codecs=vp9"
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+        mimeType = "video/webm;codecs=vp8"
+      } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+        mimeType = "video/mp4"
+      } else {
+        mimeType = "video/webm"
+      }
       videoBitrate = 5000000 // 5 Mbps for desktop
     }
+    
+    console.log("[v0] MediaRecorder config:", { isMobileDevice, mimeType, videoBitrate })
     
     const mediaRecorder = new MediaRecorder(canvasStream, { 
       mimeType,
