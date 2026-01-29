@@ -129,9 +129,14 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         videoBitsPerSecond: 8000000, // 8 Mbps for mobile
       })
     } else {
-      // Desktop: Let browser choose best format, no custom options
-      mimeType = "video/webm"
-      mediaRecorder = new MediaRecorder(canvasStream)
+      // Desktop: Original working config - mp4 if supported, else webm with vp8
+      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
+        ? "video/mp4" 
+        : "video/webm;codecs=vp8,opus"
+      mediaRecorder = new MediaRecorder(canvasStream, { 
+        mimeType,
+        videoBitsPerSecond: 5000000, // 5 Mbps
+      })
     }
 
     mediaRecorder.ondataavailable = (e) => {
@@ -144,9 +149,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
       }
-      // Use base mime type without codecs for Blob
-      const blobType = mimeType.split(';')[0]
-      const blob = new Blob(chunksRef.current, { type: blobType })
+      const blob = new Blob(chunksRef.current, { type: mimeType })
       onVideoRecorded(blob, aspectRatio)
     }
 
