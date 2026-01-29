@@ -65,11 +65,12 @@ export function BottomSheet({
   return (
     <div
       ref={sheetRef}
-      className={`fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-3xl bg-neutral-950 transition-all ${
+      className={`fixed inset-x-0 bottom-0 z-40 flex max-h-[85vh] flex-col rounded-t-3xl bg-neutral-950 transition-all ${
         isDragging ? "duration-0" : "duration-300 ease-out"
       }`}
       style={{
-        height: isExpanded ? "70vh" : `${peekHeight}px`,
+        height: isExpanded ? "auto" : `${peekHeight}px`,
+        minHeight: isExpanded ? "50vh" : undefined,
         transform: getTransform(),
       }}
       onTouchStart={handleTouchStart}
@@ -85,7 +86,7 @@ export function BottomSheet({
       </div>
       
       {/* Content */}
-      <div className={`flex-1 overscroll-contain px-3 pb-4 ${isExpanded ? "overflow-y-auto" : "overflow-hidden"}`}>
+      <div className={`overscroll-contain px-3 pb-6 ${isExpanded ? "overflow-y-auto" : "overflow-hidden"}`}>
         {children}
       </div>
     </div>

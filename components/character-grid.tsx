@@ -1,11 +1,35 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useRef, useState, useEffect } from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { upload } from "@vercel/blob/client"
 import type { Character } from "@/lib/types"
 import { defaultCharacters } from "@/lib/constants"
+
+// Helper to detect aspect ratio from image URL
+function detectImageAspectRatio(src: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new window.Image()
+    img.crossOrigin = "anonymous"
+    img.onload = () => {
+      const ratio = img.width / img.height
+      if (ratio < 0.65) {
+        resolve("9:16")
+      } else if (ratio >= 0.65 && ratio < 0.85) {
+        resolve("3:4")
+      } else if (ratio >= 0.85 && ratio < 1.15) {
+        resolve("1:1")
+      } else if (ratio >= 1.15 && ratio < 1.5) {
+        resolve("4:3")
+      } else {
+        resolve("16:9")
+      }
+    }
+    img.onerror = () => resolve("1:1")
+    img.src = src
+  })
+}
 
 // Re-export for backwards compatibility
 export { defaultCharacters }
@@ -57,6 +81,19 @@ export function CharacterGrid({
   
   const visibleDefaultCharacters = defaultCharacters.filter(c => !hiddenDefaultIds.includes(c.id))
   const allCharacters = [...visibleDefaultCharacters, ...customCharacters]
+  
+  // Track detected aspect ratios for each character image
+  const [aspectRatios, setAspectRatios] = useState<Record<number, string>>({})
+  
+  // Detect aspect ratios for all character images
+  useEffect(() => {
+    allCharacters.forEach(async (char) => {
+      if (!aspectRatios[char.id] && char.src) {
+        const ar = await detectImageAspectRatio(char.src)
+        setAspectRatios(prev => ({ ...prev, [char.id]: ar }))
+      }
+    })
+  }, [allCharacters, aspectRatios])
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -199,7 +236,7 @@ export function CharacterGrid({
   return (
     <div 
       className={cn(
-        "relative flex h-full flex-col",
+        "relative flex max-h-full flex-col",
         isDragOver && "ring-2 ring-white/30"
       )}
       onDragOver={handleDragOver}
@@ -217,14 +254,14 @@ export function CharacterGrid({
         </div>
       )}
       
-      <div className="-ml-1 min-h-0 flex-1 overflow-y-auto pl-1">
+      <div className="-ml-1 shrink overflow-y-auto pl-1 md:min-h-0 md:flex-1">
         <p className="mb-2 font-mono text-[10px] lowercase text-neutral-500 md:mb-3 md:text-[11px]">
           select character
         </p>
         
         {/* Grid container */}
         <div className="-mr-1 -mt-1 pr-1 pt-1">
-          <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
+          <div className="grid grid-cols-5 gap-1.5 md:grid-cols-4 md:gap-3">
           {allCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
@@ -245,6 +282,12 @@ export function CharacterGrid({
                     className="object-cover object-top"
                     sizes="80px"
                   />
+                  {/* Aspect ratio badge */}
+                  {aspectRatios[char.id] && (
+                    <div className="absolute right-1 top-1 rounded bg-black/70 px-1 py-0.5 font-mono text-[8px] text-white/80 backdrop-blur-sm">
+                      {aspectRatios[char.id]}
+                    </div>
+                  )}
                 </button>
                 {canDelete && !disabled && (
                   <button
@@ -423,8 +466,8 @@ export function CharacterGrid({
       
       {/* Generate Video CTA - Always visible at bottom */}
       {onGenerate && (
-        <div className="shrink-0 border-t border-neutral-800 pt-3 md:pt-4">
-          <div className="flex flex-col gap-2 md:gap-4">
+        <div className="shrink-0 border-t border-neutral-800 pt-2 md:pt-4">
+          <div className="flex flex-col gap-1.5 md:gap-4">
             {onSendViaEmailChange && (
               <label className={cn(
                 "flex cursor-pointer items-center gap-2",
@@ -446,7 +489,7 @@ export function CharacterGrid({
               "hidden font-mono text-[10px] text-neutral-600 md:block",
               !canGenerate && "opacity-50"
             )}>
-              generation takes 3-4 minutes. we{"'"}ll email you when complete.
+              generation takes 5-6 minutes. we{"'"}ll email you when complete.
             </p>
             {generateError && (
               <p className="font-mono text-[10px] text-amber-400 md:text-[11px]">

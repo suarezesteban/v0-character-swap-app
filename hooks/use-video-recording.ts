@@ -54,14 +54,14 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [])
 
-  const handleVideoRecorded = useCallback((blob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => {
+  const handleVideoRecorded = useCallback((blob: Blob, _aspectRatio: "9:16" | "16:9" | "fill") => {
     // Validate file size
     if (blob.size > MAX_VIDEO_SIZE) {
       alert("Video is too large. Please record a shorter video (max 50MB).")
       return
     }
 
-    // Create a video element to check duration
+    // Create a video element to check duration and detect actual aspect ratio
     const video = document.createElement("video")
     video.preload = "metadata"
     
@@ -75,8 +75,24 @@ export function useVideoRecording(): UseVideoRecordingReturn {
         return
       }
       
+      // Detect actual aspect ratio from video dimensions
+      const { videoWidth, videoHeight } = video
+      const ratio = videoWidth / videoHeight
+      let detectedAspectRatio: "9:16" | "16:9" | "fill" = "fill"
+      
+      if (ratio < 0.7) {
+        // Portrait (9:16 is ~0.5625)
+        detectedAspectRatio = "9:16"
+      } else if (ratio > 1.4) {
+        // Landscape (16:9 is ~1.777)
+        detectedAspectRatio = "16:9"
+      } else {
+        // Square-ish or other - treat as fill
+        detectedAspectRatio = "fill"
+      }
+      
       setRecordedVideo(blob)
-      setRecordedAspectRatio(aspectRatio)
+      setRecordedAspectRatio(detectedAspectRatio)
       setShowPreview(true)
       // Start uploading immediately in background
       uploadVideo(blob)
@@ -86,7 +102,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       URL.revokeObjectURL(video.src)
       // Still accept the video if we can't validate duration
       setRecordedVideo(blob)
-      setRecordedAspectRatio(aspectRatio)
+      setRecordedAspectRatio("fill") // Default to fill if can't detect
       setShowPreview(true)
       uploadVideo(blob)
     }

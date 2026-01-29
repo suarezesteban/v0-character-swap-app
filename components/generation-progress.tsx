@@ -10,8 +10,8 @@ interface GenerationProgressProps {
   onCancel?: (e?: React.MouseEvent) => void
 }
 
-// Estimated time in seconds (5 minutes)
-const ESTIMATED_DURATION = 5 * 60
+// Estimated time in seconds (~5:30 based on real usage data)
+const ESTIMATED_DURATION = 5.5 * 60
 
 export function GenerationProgress({ 
   characterImageUrl, 
@@ -46,14 +46,16 @@ export function GenerationProgress({
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  // Status-specific messages
+  // Status-specific messages (adjusted for ~5:30 total duration)
   const getStatusMessage = () => {
     if (status === "uploading") return "Uploading video..."
     if (status === "pending") return "In queue..."
     if (elapsedSeconds < 30) return "Starting AI model..."
-    if (elapsedSeconds < 120) return "Analyzing video..."
-    if (elapsedSeconds < 240) return "Generating frames..."
-    return "Finalizing..."
+    if (elapsedSeconds < 90) return "Analyzing motion..."
+    if (elapsedSeconds < 180) return "Processing frames..."
+    if (elapsedSeconds < 270) return "Generating video..."
+    if (elapsedSeconds < 330) return "Rendering final..."
+    return "Almost done..."
   }
 
   return (
@@ -161,9 +163,11 @@ export function GenerationProgressExpanded({
     if (status === "uploading") return "Uploading video..."
     if (status === "pending") return "In queue..."
     if (elapsedSeconds < 30) return "Starting AI model..."
-    if (elapsedSeconds < 120) return "Analyzing video..."
-    if (elapsedSeconds < 240) return "Generating frames..."
-    return "Finalizing..."
+    if (elapsedSeconds < 90) return "Analyzing motion..."
+    if (elapsedSeconds < 180) return "Processing frames..."
+    if (elapsedSeconds < 270) return "Generating video..."
+    if (elapsedSeconds < 330) return "Rendering final..."
+    return "Almost done..."
   }
 
   return (

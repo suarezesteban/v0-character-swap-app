@@ -28,7 +28,8 @@ export default function Home() {
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
   const [emailSent] = useState(false)
-  const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
+  // Detected aspect ratio of the generated video (from character image)
+  const [generatedVideoAspectRatio, setGeneratedVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [showPip, setShowPip] = useState(true)
@@ -209,13 +210,13 @@ export default function Home() {
   return (
     <main className="relative flex h-[100dvh] flex-row overflow-hidden bg-black">
       {/* Camera/Video Section */}
-      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (recordedAspectRatio === "fill" ? "p-0" : "p-2") : (currentAspectRatio === "fill" ? "p-0" : "p-2")}`}>
+      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-2") : "p-0"}`}>
         {resultUrl ? (
-          <div className={`relative flex h-full w-full ${(selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "fill" ? "" : "items-center justify-center"}`}>
+          <div className={`relative flex h-full w-full ${generatedVideoAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
             <div className={`relative overflow-hidden bg-neutral-900 ${
-              (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "9:16"
+              generatedVideoAspectRatio === "9:16"
                 ? "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-2xl"
-                : (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "16:9"
+                : generatedVideoAspectRatio === "16:9"
                   ? "aspect-video w-full max-w-4xl rounded-2xl"
                   : "h-full w-full"
             }`}>
@@ -231,6 +232,15 @@ export default function Home() {
                 onLoadedData={(e) => {
                   const video = e.currentTarget
                   video.muted = false
+                  // Detect aspect ratio of generated video
+                  const ratio = video.videoWidth / video.videoHeight
+                  if (ratio < 0.7) {
+                    setGeneratedVideoAspectRatio("9:16")
+                  } else if (ratio > 1.4) {
+                    setGeneratedVideoAspectRatio("16:9")
+                  } else {
+                    setGeneratedVideoAspectRatio("fill")
+                  }
                 }}
                 onPlay={() => {
                   pipVideoRef.current?.play()
@@ -271,12 +281,12 @@ export default function Home() {
                     </svg>
                     {showPip ? "PiP on" : "PiP off"}
                   </button>
-                  {/* PiP overlay - show original video */}
+                  {/* PiP overlay - show original video with its actual aspect ratio */}
                   {showPip && (
                     <div className={`overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
-                      (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "9:16" 
+                      recordedAspectRatio === "9:16" 
                         ? "aspect-[9/16] h-32 md:h-40" 
-                        : (selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio) === "16:9"
+                        : recordedAspectRatio === "16:9"
                           ? "aspect-video w-32 md:w-48"
                           : "aspect-video w-32 md:w-48"
                     }`}>
@@ -310,7 +320,7 @@ export default function Home() {
                           pipVideoUrl: pipSource,
                           pipPosition: "bottom-right",
                           pipScale: 0.25,
-                          pipAspectRatio: selectedGeneratedVideo ? currentAspectRatio : recordedAspectRatio,
+                          pipAspectRatio: recordedAspectRatio,
                           addWatermark: true,
                           onProgress: setDownloadProgress,
                         })
@@ -427,7 +437,6 @@ export default function Home() {
           <CameraPreview
             onVideoRecorded={handleVideoRecorded}
             isProcessing={false}
-            onAspectRatioChange={setCurrentAspectRatio}
           />
         )}
       </div>
