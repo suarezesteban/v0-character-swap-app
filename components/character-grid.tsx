@@ -217,13 +217,13 @@ export function CharacterGrid({
         </div>
       )}
       
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="-ml-1 min-h-0 flex-1 overflow-y-auto pl-1">
         <p className="mb-2 font-mono text-[10px] lowercase text-neutral-500 md:mb-3 md:text-[11px]">
           select character
         </p>
         
-        {/* Extra padding to prevent ring clipping on selected items */}
-        <div className="-m-1 p-1">
+        {/* Grid container */}
+        <div className="-mr-1 -mt-1 pr-1 pt-1">
           <div className="grid grid-cols-5 gap-2 md:grid-cols-4 md:gap-3">
           {allCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
