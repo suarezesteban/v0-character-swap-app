@@ -24,6 +24,7 @@ export const DEFAULT_CHARACTERS: Character[] = [
   { id: 3, src: "/characters/bernie.png", name: "Bernie" },
   { id: 4, src: "/characters/think.png", name: "Think" },
   { id: 5, src: "/characters/aliens.png", name: "Aliens" },
+  { id: 6, src: "/characters/jdvance.png", name: "JD Vance" },
 ]
 
 // Alias for backwards compatibility
