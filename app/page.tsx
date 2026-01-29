@@ -136,6 +136,11 @@ export default function Home() {
     setSelectedGeneratedVideo(null)
   }, [clearRecording, setSelectedCharacter])
 
+  // Debug: log aspect ratio changes
+  useEffect(() => {
+    console.log("[v0] recordedAspectRatio changed:", recordedAspectRatio)
+  }, [recordedAspectRatio])
+
   // Handle Escape key to close video and go back to camera
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -253,40 +258,43 @@ export default function Home() {
                   }
                 }}
               />
-              {/* PiP toggle */}
+              {/* PiP container - groups toggle button and overlay together */}
               {(sourceVideoUrl || recordedVideoUrl) && (
-                <button
-                  onClick={() => setShowPip(!showPip)}
-                  className={`absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] backdrop-blur-md transition-all ${
-                    showPip 
-                      ? "bg-white text-black" 
-                      : "bg-black/50 text-white hover:bg-black/60"
-                  }`}
-                >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <rect x="2" y="3" width="20" height="14" rx="2" />
-                    <rect x="12" y="10" width="8" height="5" rx="1" />
-                  </svg>
-                  {showPip ? "PiP on" : "PiP off"}
-                </button>
-              )}
-              {/* PiP overlay - show original video in bottom right */}
-              {showPip && (sourceVideoUrl || recordedVideoUrl) && (
-                <div className={`absolute bottom-20 right-4 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
-                  recordedAspectRatio === "9:16" 
-                    ? "aspect-[9/16] h-32 md:h-40" 
-                    : recordedAspectRatio === "16:9"
-                      ? "aspect-video w-32 md:w-48"
-                      : "aspect-video w-32 md:w-48"
-                }`}>
-                  <video
-                    ref={pipVideoRef}
-                    src={sourceVideoUrl || recordedVideoUrl || ""}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="h-full w-full object-cover"
-                  />
+                <div className="absolute bottom-20 right-4 flex flex-col items-end gap-2">
+                  {/* PiP toggle button */}
+                  <button
+                    onClick={() => setShowPip(!showPip)}
+                    className={`flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] backdrop-blur-md transition-all ${
+                      showPip 
+                        ? "bg-white text-black" 
+                        : "bg-black/50 text-white hover:bg-black/60"
+                    }`}
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <rect x="2" y="3" width="20" height="14" rx="2" />
+                      <rect x="12" y="10" width="8" height="5" rx="1" />
+                    </svg>
+                    {showPip ? "PiP on" : "PiP off"}
+                  </button>
+                  {/* PiP overlay - show original video */}
+                  {showPip && (
+                    <div className={`overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
+                      recordedAspectRatio === "9:16" 
+                        ? "aspect-[9/16] h-32 md:h-40" 
+                        : recordedAspectRatio === "16:9"
+                          ? "aspect-video w-32 md:w-48"
+                          : "aspect-video w-32 md:w-48"
+                    }`}>
+                      <video
+                        ref={pipVideoRef}
+                        src={sourceVideoUrl || recordedVideoUrl || ""}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
               {/* Action buttons overlayed on video */}
@@ -363,6 +371,7 @@ export default function Home() {
         ) : recordedVideoUrl ? (
           <div 
             className={`relative flex h-full w-full ${recordedAspectRatio === "fill" ? "" : "items-center justify-center"}`}
+            data-aspect-ratio={recordedAspectRatio}
             onClick={(e) => {
               // If clicked outside the video container, go back to recording
               if (e.target === e.currentTarget) {
