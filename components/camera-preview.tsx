@@ -83,10 +83,22 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     if (!ctx) return
 
     // Wait for video to have dimensions
-    const width = video.videoWidth || 720
-    const height = video.videoHeight || 1280
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
-    // Set canvas size to match video
+    let width = video.videoWidth || 720
+    let height = video.videoHeight || 1280
+    
+    // Mobile: Reduce resolution to avoid issues with fal.ai processing large files
+    if (isMobileDevice) {
+      const maxDimension = 720 // Cap at 720p for mobile
+      if (width > maxDimension || height > maxDimension) {
+        const scale = maxDimension / Math.max(width, height)
+        width = Math.round(width * scale)
+        height = Math.round(height * scale)
+      }
+    }
+    
+    // Set canvas size
     canvas.width = width
     canvas.height = height
 
