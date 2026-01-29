@@ -567,13 +567,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Toast */}
-      {emailSent && (
-        <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-neutral-900 px-4 py-2 shadow-lg">
-          <p className="font-sans text-[13px] text-white">Email sent successfully</p>
-        </div>
-      )}
-      
+
       {/* Error Toast */}
       {errorToast && (
         <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-red-900 px-4 py-2 shadow-lg">
