@@ -12,6 +12,7 @@ import { useCharacters } from "@/hooks/use-characters"
 import { useVideoGeneration } from "@/hooks/use-video-generation"
 import { useVideoRecording } from "@/hooks/use-video-recording"
 import { STORAGE_KEYS } from "@/lib/constants"
+import { createPipVideoClient, downloadBlob } from "@/lib/video-pip-client"
 
 export default function Home() {
   const { user, login, logout } = useAuth()
@@ -28,6 +29,9 @@ export default function Home() {
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
   const [emailSent] = useState(false)
   const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [showPip, setShowPip] = useState(true)
 
   // Video refs for sync
   const mainVideoRef = useRef<HTMLVideoElement>(null)
@@ -249,8 +253,25 @@ export default function Home() {
                   }
                 }}
               />
-              {/* PiP overlay - show original video in bottom right */}
+              {/* PiP toggle */}
               {(sourceVideoUrl || recordedVideoUrl) && (
+                <button
+                  onClick={() => setShowPip(!showPip)}
+                  className={`absolute right-4 top-4 flex items-center gap-2 rounded-full px-3 py-1.5 font-mono text-[11px] backdrop-blur-md transition-all ${
+                    showPip 
+                      ? "bg-white text-black" 
+                      : "bg-black/50 text-white hover:bg-black/60"
+                  }`}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <rect x="12" y="10" width="8" height="5" rx="1" />
+                  </svg>
+                  {showPip ? "PiP on" : "PiP off"}
+                </button>
+              )}
+              {/* PiP overlay - show original video in bottom right */}
+              {showPip && (sourceVideoUrl || recordedVideoUrl) && (
                 <div className={`absolute bottom-20 right-4 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
                   recordedAspectRatio === "9:16" 
                     ? "aspect-[9/16] h-32 md:h-40" 
@@ -271,28 +292,64 @@ export default function Home() {
               {/* Action buttons overlayed on video */}
               <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-3">
                 <button
+                  disabled={isDownloading}
                   onClick={async () => {
-                    try {
-                      const response = await fetch(resultUrl)
-                      const blob = await response.blob()
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement("a")
-                      a.href = url
-                      a.download = "generated-video.mp4"
-                      document.body.appendChild(a)
-                      a.click()
-                      document.body.removeChild(a)
-                      URL.revokeObjectURL(url)
-                    } catch (error) {
-                      console.error("Download failed:", error)
+                    const pipSource = sourceVideoUrl || recordedVideoUrl
+                    
+                    // If we have a PiP source and PiP is enabled, create video with PiP overlay
+                    if (showPip && pipSource) {
+                      try {
+                        setIsDownloading(true)
+                        setDownloadProgress(0)
+                        
+                        const pipBlob = await createPipVideoClient({
+                          mainVideoUrl: resultUrl,
+                          pipVideoUrl: pipSource,
+                          pipPosition: "bottom-right",
+                          pipScale: 0.25,
+                          onProgress: setDownloadProgress,
+                        })
+                        
+                        downloadBlob(pipBlob, "generated-video-with-pip.mp4")
+                      } catch (error) {
+                        console.error("PiP download failed:", error)
+                        // Fallback to regular download
+                        const response = await fetch(resultUrl)
+                        const blob = await response.blob()
+                        downloadBlob(blob, "generated-video.mp4")
+                      } finally {
+                        setIsDownloading(false)
+                        setDownloadProgress(0)
+                      }
+                    } else {
+                      // No PiP source, download original
+                      try {
+                        const response = await fetch(resultUrl)
+                        const blob = await response.blob()
+                        downloadBlob(blob, "generated-video.mp4")
+                      } catch (error) {
+                        console.error("Download failed:", error)
+                      }
                     }
                   }}
-                  className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95"
+                  className="flex items-center gap-2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95 disabled:opacity-70"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download
+                  {isDownloading ? (
+                    <>
+                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {Math.round(downloadProgress * 100)}%
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={handleReset}
