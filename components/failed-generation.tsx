@@ -29,7 +29,7 @@ function getUserFriendlyError(errorMessage: string | null): string {
   
   // Motion/movement related errors
   if (errorMessage.toLowerCase().includes("motion") || errorMessage.toLowerCase().includes("continuous")) {
-    return "Try recording with more movement - look around, nod, or gesture while recording."
+    return "The AI couldn't process this video. Try: recording in better lighting, moving your head more slowly, or using a different character image."
   }
   
   // Face detection errors
