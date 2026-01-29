@@ -196,7 +196,15 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }, 1000)
   }, [beginRecording])
 
+  // Minimum recording duration required by fal.ai (2 seconds of continuous motion)
+  const MIN_RECORDING_SECONDS = 3
+  
   const stopRecording = useCallback(() => {
+    // Prevent stopping too early - fal.ai requires at least 2s of continuous motion
+    if (recordingTime < MIN_RECORDING_SECONDS) {
+      return // Don't stop, need more recording time
+    }
+    
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop()
     }
@@ -209,7 +217,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       clearInterval(timerRef.current)
       timerRef.current = null
     }
-  }, [])
+  }, [recordingTime])
 
   if (hasPermission === false) {
     return (

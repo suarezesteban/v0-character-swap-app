@@ -27,19 +27,19 @@ interface FailedGenerationProps {
 function getUserFriendlyError(errorMessage: string | null): string {
   if (!errorMessage) return "Something went wrong. Please try again."
   
-  // Motion/movement related errors
+  // Motion/movement related errors - fal.ai requires 2+ seconds of continuous motion
   if (errorMessage.toLowerCase().includes("motion") || errorMessage.toLowerCase().includes("continuous")) {
-    return "The AI couldn't process this video. Try: recording in better lighting, moving your head more slowly, or using a different character image."
+    return "Video needs at least 2 seconds of continuous movement. Try recording for 3+ seconds while moving your head or body steadily."
+  }
+  
+  // Duration errors
+  if (errorMessage.toLowerCase().includes("duration") || errorMessage.toLowerCase().includes("short") || errorMessage.toLowerCase().includes("2 second")) {
+    return "Video too short. Record for at least 3 seconds with continuous movement."
   }
   
   // Face detection errors
   if (errorMessage.toLowerCase().includes("face") || errorMessage.toLowerCase().includes("detect")) {
     return "Make sure your face is clearly visible and well-lit in the video."
-  }
-  
-  // Duration errors
-  if (errorMessage.toLowerCase().includes("duration") || errorMessage.toLowerCase().includes("short")) {
-    return "Try recording a slightly longer video with continuous movement."
   }
   
   // Quality errors
