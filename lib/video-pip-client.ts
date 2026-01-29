@@ -46,12 +46,26 @@ export async function createPipVideoClient({
   const mainData = await fetchFile(mainVideoUrl)
   const pipData = pipVideoUrl ? await fetchFile(pipVideoUrl) : null
   
+  // Fetch font for watermark
+  let fontData: Uint8Array | null = null
+  if (addWatermark) {
+    try {
+      const fontUrl = "https://cdn.jsdelivr.net/fontsource/fonts/geist-mono@latest/latin-400-normal.ttf"
+      fontData = await fetchFile(fontUrl)
+    } catch (e) {
+      console.warn("Failed to load font for watermark:", e)
+    }
+  }
+  
   onProgress?.(0.3)
   
   // Write files to ffmpeg virtual filesystem
   await ff.writeFile("main.mp4", mainData)
   if (pipData) {
     await ff.writeFile("pip.webm", pipData)
+  }
+  if (fontData) {
+    await ff.writeFile("font.ttf", fontData)
   }
   
   onProgress?.(0.4)
@@ -73,20 +87,41 @@ export async function createPipVideoClient({
   // Escape special characters for ffmpeg drawtext
   const escapedText = watermarkText.replace(/:/g, "\\:")
   
+  // Build watermark filter if font is available
+  const watermarkFilter = fontData 
+    ? `drawtext=text='${escapedText}':fontfile=font.ttf:fontsize=18:fontcolor=white@0.8:x=20:y=h-40:shadowcolor=black@0.5:shadowx=1:shadowy=1`
+    : ""
+  
   // Build filter complex based on options
   let filterComplex = ""
   
   if (pipData) {
     // With PiP overlay
     filterComplex = `[1:v]scale=iw*${pipScale}:ih*${pipScale}[pip];[0:v][pip]overlay=${overlayPosition}:shortest=1`
-    if (addWatermark) {
-      filterComplex += `[vid];[vid]drawtext=text='${escapedText}':fontsize=16:fontcolor=white@0.7:x=20:y=h-30`
+    if (addWatermark && watermarkFilter) {
+      filterComplex += `[vid];[vid]${watermarkFilter}`
     }
   } else {
     // No PiP, just watermark
-    if (addWatermark) {
-      filterComplex = `drawtext=text='${escapedText}':fontsize=16:fontcolor=white@0.7:x=20:y=h-30`
+    if (addWatermark && watermarkFilter) {
+      filterComplex = watermarkFilter
     }
+  }
+  
+  // If no filters needed, just return the original video
+  if (!filterComplex) {
+    // Clean up
+    await ff.deleteFile("main.mp4")
+    if (pipData) {
+      await ff.deleteFile("pip.webm")
+    }
+    if (fontData) {
+      await ff.deleteFile("font.ttf")
+    }
+    onProgress?.(1.0)
+    // Fetch original and return
+    const response = await fetch(mainVideoUrl)
+    return await response.blob()
   }
   
   // Build ffmpeg command
@@ -96,9 +131,7 @@ export async function createPipVideoClient({
     ffmpegArgs.push("-i", "pip.webm")
   }
   
-  if (filterComplex) {
-    ffmpegArgs.push("-filter_complex", filterComplex)
-  }
+  ffmpegArgs.push("-filter_complex", filterComplex)
   
   ffmpegArgs.push(
     "-c:v", "libx264",
@@ -119,6 +152,9 @@ export async function createPipVideoClient({
   await ff.deleteFile("main.mp4")
   if (pipData) {
     await ff.deleteFile("pip.webm")
+  }
+  if (fontData) {
+    await ff.deleteFile("font.ttf")
   }
   await ff.deleteFile("output.mp4")
   
