@@ -221,7 +221,7 @@ export default function Home() {
   
 
   return (
-    <main className="relative flex h-[100dvh] flex-row overflow-hidden bg-black">
+    <main className={`relative flex h-[100dvh] flex-row overflow-hidden bg-black ${isMobile ? 'extend-to-top' : ''}`}>
       {/* Camera/Video Section */}
       <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-1") : "p-0"}`}>
         {resultUrl ? (

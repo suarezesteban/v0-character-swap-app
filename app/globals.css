@@ -121,6 +121,18 @@
   }
   html, body {
     @apply bg-black text-foreground;
+    /* Extend content under iOS safe areas */
+    padding: 0;
+    margin: 0;
+  }
+}
+
+/* iOS: Make content extend under status bar */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .extend-to-top {
+    padding-top: env(safe-area-inset-top);
+    margin-top: calc(-1 * env(safe-area-inset-top));
+    height: calc(100% + env(safe-area-inset-top));
   }
 }
 
