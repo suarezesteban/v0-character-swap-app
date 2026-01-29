@@ -50,8 +50,6 @@ interface CharacterGridProps {
   hasVideo?: boolean
   hasCharacter?: boolean
   onGenerate?: () => void
-  sendViaEmail?: boolean
-  onSendViaEmailChange?: (value: boolean) => void
 }
 
 export function CharacterGrid({ 
@@ -68,8 +66,6 @@ export function CharacterGrid({
   hasVideo = false,
   hasCharacter = false,
   onGenerate,
-  sendViaEmail = true,
-  onSendViaEmailChange,
 }: CharacterGridProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState("")
@@ -473,28 +469,11 @@ export function CharacterGrid({
       {onGenerate && (
         <div className="shrink-0 border-t border-neutral-800 pt-2 md:pt-4">
           <div className="flex flex-col gap-1.5 md:gap-4">
-            {onSendViaEmailChange && (
-              <label className={cn(
-                "flex cursor-pointer items-center gap-2",
-                !canGenerate && "opacity-50 pointer-events-none"
-              )}>
-                <input
-                  type="checkbox"
-                  checked={sendViaEmail}
-                  onChange={(e) => onSendViaEmailChange(e.target.checked)}
-                  disabled={!canGenerate}
-                  className="h-3 w-3 rounded-sm border-neutral-700 bg-transparent accent-white"
-                />
-                <span className="font-mono text-[10px] text-neutral-500 md:text-[11px]">
-                  send video via email when ready
-                </span>
-              </label>
-            )}
             <p className={cn(
               "hidden font-mono text-[10px] text-neutral-600 md:block",
               !canGenerate && "opacity-50"
             )}>
-              generation takes 5-6 minutes. we{"'"}ll email you when complete.
+              generation takes 5-6 minutes
             </p>
             {generateError && (
               <p className="font-mono text-[10px] text-amber-400 md:text-[11px]">

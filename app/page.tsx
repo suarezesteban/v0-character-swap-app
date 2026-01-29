@@ -21,13 +21,12 @@ export default function Home() {
   // State
   const [mounted, setMounted] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [sendViaEmail, setSendViaEmail] = useState(true)
+
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null)
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<string | null>(null)
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
-  const [emailSent] = useState(false)
   // Detected aspect ratio of the generated video (from character image)
   const [generatedVideoAspectRatio, setGeneratedVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isDownloading, setIsDownloading] = useState(false)
@@ -107,11 +106,11 @@ export default function Home() {
       const character = allCharacters.find(c => c.id === selectedCharacter)
       if (character) {
         setTimeout(() => {
-          processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl, recordedAspectRatio)
+          processVideo(recordedVideo, character, false, uploadedVideoUrl, recordedAspectRatio)
         }, 100)
       }
     }
-  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl, recordedAspectRatio])
+  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio])
 
   // Auto-expand bottom sheet when video is recorded
   useEffect(() => {
@@ -125,9 +124,9 @@ export default function Home() {
     if (!recordedVideo || !selectedCharacter) return
     const character = allCharacters.find(c => c.id === selectedCharacter)
     if (character) {
-      processVideo(recordedVideo, character, sendViaEmail, uploadedVideoUrl, recordedAspectRatio)
+      processVideo(recordedVideo, character, false, uploadedVideoUrl, recordedAspectRatio)
     }
-  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, sendViaEmail, uploadedVideoUrl, recordedAspectRatio])
+  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio])
 
   const handleReset = useCallback(() => {
     clearRecording()
@@ -452,8 +451,7 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-                sendViaEmail={sendViaEmail}
-                onSendViaEmailChange={setSendViaEmail}
+
               >
                 <GenerationsPanel
                 onSelectVideo={(url, sourceUrl, aspectRatio) => {
@@ -523,8 +521,7 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-                sendViaEmail={sendViaEmail}
-                onSendViaEmailChange={setSendViaEmail}
+
               >
                 <GenerationsPanel
                   onSelectVideo={(url, sourceUrl) => {
