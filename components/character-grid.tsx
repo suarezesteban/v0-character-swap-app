@@ -427,12 +427,12 @@ export function CharacterGrid({
                   placeholder="describe a character..."
                   disabled={disabled}
                   autoFocus
-                  className="h-8 flex-1 rounded-md border-0 bg-neutral-800 px-3 font-mono text-[12px] text-white placeholder-neutral-500 outline-none transition-colors focus:ring-1 focus:ring-neutral-600 disabled:opacity-50"
+                  className="h-8 flex-1 rounded-lg border-0 bg-neutral-800 px-3 font-mono text-[12px] text-white placeholder-neutral-500 outline-none transition-colors focus:ring-1 focus:ring-neutral-600 disabled:opacity-50"
                 />
                 <button
                   onClick={handleGenerate}
                   disabled={disabled || !prompt.trim()}
-                  className="flex h-8 items-center justify-center rounded-md bg-white px-3 font-mono text-[11px] text-black transition-opacity hover:opacity-80 disabled:opacity-30"
+                  className="flex h-8 items-center justify-center rounded-lg bg-white px-3 font-mono text-[11px] text-black transition-opacity hover:opacity-80 disabled:opacity-30"
                 >
                   go
                 </button>
@@ -443,7 +443,7 @@ export function CharacterGrid({
         
         {/* Upload error message */}
         {uploadError && (
-          <div className="mt-2 rounded-md bg-red-500/10 px-3 py-2 text-[11px] text-red-400">
+          <div className="mt-2 rounded-lg bg-red-500/10 px-3 py-2 text-[11px] text-red-400">
             {uploadError}
             <button 
               onClick={() => setUploadError(null)} 

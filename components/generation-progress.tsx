@@ -171,7 +171,7 @@ export function GenerationProgressExpanded({
   }
 
   return (
-    <div className="rounded-xl bg-neutral-900 p-4 ring-1 ring-neutral-800">
+    <div className="rounded-lg bg-neutral-900 p-4 ring-1 ring-neutral-800">
       <div className="flex items-start gap-4">
         {/* Character thumbnail */}
         {characterImageUrl && (

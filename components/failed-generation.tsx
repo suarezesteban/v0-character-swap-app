@@ -27,19 +27,19 @@ interface FailedGenerationProps {
 function getUserFriendlyError(errorMessage: string | null): string {
   if (!errorMessage) return "Something went wrong. Please try again."
   
-  // Motion/movement related errors
+  // Motion/movement related errors - fal.ai requires 2+ seconds of continuous motion
   if (errorMessage.toLowerCase().includes("motion") || errorMessage.toLowerCase().includes("continuous")) {
-    return "The AI couldn't process this video. Try: recording in better lighting, moving your head more slowly, or using a different character image."
+    return "Video needs at least 2 seconds of continuous movement. Try recording for 3+ seconds while moving your head or body steadily."
+  }
+  
+  // Duration errors
+  if (errorMessage.toLowerCase().includes("duration") || errorMessage.toLowerCase().includes("short") || errorMessage.toLowerCase().includes("2 second")) {
+    return "Video too short. Record for at least 3 seconds with continuous movement."
   }
   
   // Face detection errors
   if (errorMessage.toLowerCase().includes("face") || errorMessage.toLowerCase().includes("detect")) {
     return "Make sure your face is clearly visible and well-lit in the video."
-  }
-  
-  // Duration errors
-  if (errorMessage.toLowerCase().includes("duration") || errorMessage.toLowerCase().includes("short")) {
-    return "Try recording a slightly longer video with continuous movement."
   }
   
   // Quality errors
@@ -95,7 +95,7 @@ export function FailedGeneration({ gen, onDelete }: FailedGenerationProps) {
               setIsOpen(false)
               onDelete(e)
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-red-500/10 px-3 py-2 font-sans text-xs text-red-400 transition-colors hover:bg-red-500/20"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 font-sans text-xs text-red-400 transition-colors hover:bg-red-500/20"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
