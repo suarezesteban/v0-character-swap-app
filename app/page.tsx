@@ -265,7 +265,7 @@ export default function Home() {
               />
               {/* PiP container - groups toggle button and overlay together */}
               {(sourceVideoUrl || recordedVideoUrl) && (
-                <div className="absolute bottom-20 right-4 flex flex-col items-end gap-2">
+                <div className="absolute bottom-32 right-4 flex flex-col items-end gap-2">
                   {/* PiP toggle button */}
                   <button
                     onClick={() => setShowPip(!showPip)}
@@ -383,7 +383,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={handleReset}
-                  className="rounded-full bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
+                  className="whitespace-nowrap rounded-full bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
                 >
                   New Video
                 </button>
