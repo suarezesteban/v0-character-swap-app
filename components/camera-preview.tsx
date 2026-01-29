@@ -8,10 +8,9 @@ interface CameraPreviewProps {
   progress?: number
   progressMessage?: string
   isError?: boolean
-  onAspectRatioChange?: (aspectRatio: "9:16" | "16:9" | "fill") => void
 }
 
-export function CameraPreview({ onVideoRecorded, isProcessing, progress, progressMessage, isError, onAspectRatioChange }: CameraPreviewProps) {
+export function CameraPreview({ onVideoRecorded, isProcessing, progress, progressMessage, isError }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -24,17 +23,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   const [countdown, setCountdown] = useState<number | null>(null)
   const [showFlash, setShowFlash] = useState(false)
   const [showTips, setShowTips] = useState(true)
-  const [aspectRatio, setAspectRatioState] = useState<"9:16" | "16:9" | "fill">("fill")
-  
-  const setAspectRatio = useCallback((newRatio: "9:16" | "16:9" | "fill") => {
-    setAspectRatioState(newRatio)
-    onAspectRatioChange?.(newRatio)
-  }, [onAspectRatioChange])
-  
-  // Notify parent of initial aspect ratio on mount
-  useEffect(() => {
-    onAspectRatioChange?.(aspectRatio)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Always use fill aspect ratio
+  const aspectRatio = "fill" as const
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const isStartingRef = useRef(false)
@@ -46,14 +36,12 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         originalStreamRef.current.getTracks().forEach(track => track.stop())
       }
       
-      const isVertical = aspectRatio === "9:16"
+      // Always request 16:9 as base (most webcams are 16:9) in fill mode
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: "user", 
-          // For "fill" mode, request 16:9 as base (most webcams are 16:9)
-          width: isVertical ? 720 : 1280, 
-          height: isVertical ? 1280 : 720, 
-          ...(aspectRatio !== "fill" && { aspectRatio: isVertical ? 9/16 : 16/9 })
+          width: 1280, 
+          height: 720, 
         },
         audio: true,
       })
@@ -65,7 +53,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     } catch {
       setHasPermission(false)
     }
-  }, [aspectRatio])
+  }, [])
 
   useEffect(() => {
     startCamera()
@@ -228,74 +216,10 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   }
 
   return (
-    <div className={`relative flex h-full w-full ${
-      aspectRatio === "fill" 
-        ? "" 
-        : "items-start justify-center md:items-center"
-    }`}>
-      {/* Aspect ratio selector - positioned in preview zone corner, not video corner */}
-      {!isRecording && !isProcessing && countdown === null && hasPermission && (
-        <div className="absolute right-4 top-4 z-50 hidden flex-col items-end gap-2 md:flex">
-          <div className="flex rounded-lg bg-black/60 p-1 backdrop-blur-sm">
-            <button
-              onClick={() => setAspectRatio("fill")}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
-                aspectRatio === "fill" 
-                  ? "bg-white text-black" 
-                  : "text-neutral-400 hover:text-white"
-              }`}
-              title="Fill available space"
-            >
-              <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="1" width="12" height="12" rx="1" />
-              </svg>
-              Fill
-            </button>
-            <button
-              onClick={() => setAspectRatio("9:16")}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
-                aspectRatio === "9:16" 
-                  ? "bg-white text-black" 
-                  : "text-neutral-400 hover:text-white"
-              }`}
-            >
-              <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="4" y="1" width="6" height="12" rx="1" />
-              </svg>
-              9:16
-            </button>
-            <button
-              onClick={() => setAspectRatio("16:9")}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
-                aspectRatio === "16:9" 
-                  ? "bg-white text-black" 
-                  : "text-neutral-400 hover:text-white"
-              }`}
-            >
-              <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="1" y="4" width="12" height="6" rx="1" />
-              </svg>
-              16:9
-            </button>
-          </div>
-          {/* Warning for non-portrait modes */}
-          {(aspectRatio === "16:9" || aspectRatio === "fill") && (
-            <div className="rounded-md bg-amber-500/20 px-2.5 py-1.5 backdrop-blur-sm">
-              <p className="font-mono text-[10px] text-amber-400">
-                Ensure head + upper body are clearly visible
-              </p>
-            </div>
-          )}
-        </div>
-      )}
+    <div className="relative flex h-full w-full">
 
-      <div className={`relative overflow-hidden bg-neutral-900 ${
-        aspectRatio === "9:16" 
-          ? "aspect-[9/16] h-full max-h-full w-auto rounded-none md:max-h-[95vh] md:rounded-2xl" 
-          : aspectRatio === "16:9"
-            ? "aspect-[16/9] h-auto w-full max-w-full rounded-2xl md:max-h-[80vh] md:max-w-4xl"
-            : "h-full w-full rounded-none"
-      }`}>
+
+      <div className="relative h-full w-full overflow-hidden bg-neutral-900">
         <video
           ref={videoRef}
           autoPlay

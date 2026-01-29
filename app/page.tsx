@@ -28,7 +28,8 @@ export default function Home() {
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
   const [emailSent] = useState(false)
-  const [currentAspectRatio, setCurrentAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
+  // Aspect ratio is always "fill" - the output matches the character image aspect ratio
+  const currentAspectRatio = "fill" as const
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [showPip, setShowPip] = useState(true)
@@ -427,7 +428,6 @@ export default function Home() {
           <CameraPreview
             onVideoRecorded={handleVideoRecorded}
             isProcessing={false}
-            onAspectRatioChange={setCurrentAspectRatio}
           />
         )}
       </div>
