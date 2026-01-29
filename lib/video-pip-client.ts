@@ -23,10 +23,11 @@ async function getFFmpeg(): Promise<FFmpeg> {
 
 export interface PipOptions {
   mainVideoUrl: string
-  pipVideoUrl: string
+  pipVideoUrl?: string | null
   pipPosition?: "bottom-right" | "bottom-left" | "top-right" | "top-left"
   pipScale?: number // 0.0 to 1.0, default 0.25
   onProgress?: (progress: number) => void
+  addWatermark?: boolean
 }
 
 export async function createPipVideoClient({
@@ -35,22 +36,23 @@ export async function createPipVideoClient({
   pipPosition = "bottom-right",
   pipScale = 0.2,
   onProgress,
+  addWatermark = true,
 }: PipOptions): Promise<Blob> {
   const ff = await getFFmpeg()
   
   onProgress?.(0.1)
   
-  // Fetch both videos
-  const [mainData, pipData] = await Promise.all([
-    fetchFile(mainVideoUrl),
-    fetchFile(pipVideoUrl),
-  ])
+  // Fetch main video (and pip video if provided)
+  const mainData = await fetchFile(mainVideoUrl)
+  const pipData = pipVideoUrl ? await fetchFile(pipVideoUrl) : null
   
   onProgress?.(0.3)
   
   // Write files to ffmpeg virtual filesystem
   await ff.writeFile("main.mp4", mainData)
-  await ff.writeFile("pip.webm", pipData)
+  if (pipData) {
+    await ff.writeFile("pip.webm", pipData)
+  }
   
   onProgress?.(0.4)
   
@@ -66,23 +68,47 @@ export async function createPipVideoClient({
   
   const overlayPosition = positionMap[pipPosition]
   
-  // ffmpeg command to overlay PiP video
-  // -i main.mp4: input main video
-  // -i pip.webm: input pip video
-  // [1:v]scale=iw*0.2:ih*0.2: scale pip to 20% of its original size
-  // [0:v][pip]overlay: overlay pip on main video
-  // -shortest: end when shortest input ends
-  await ff.exec([
-    "-i", "main.mp4",
-    "-i", "pip.webm",
-    "-filter_complex", 
-    `[1:v]scale=iw*${pipScale}:ih*${pipScale}[pip];[0:v][pip]overlay=${overlayPosition}:shortest=1`,
+  // Watermark text - positioned at bottom left with some padding
+  const watermarkText = "Generated with: v0-mimicme.vercel.app"
+  // Escape special characters for ffmpeg drawtext
+  const escapedText = watermarkText.replace(/:/g, "\\:")
+  
+  // Build filter complex based on options
+  let filterComplex = ""
+  
+  if (pipData) {
+    // With PiP overlay
+    filterComplex = `[1:v]scale=iw*${pipScale}:ih*${pipScale}[pip];[0:v][pip]overlay=${overlayPosition}:shortest=1`
+    if (addWatermark) {
+      filterComplex += `[vid];[vid]drawtext=text='${escapedText}':fontsize=16:fontcolor=white@0.7:x=20:y=h-30`
+    }
+  } else {
+    // No PiP, just watermark
+    if (addWatermark) {
+      filterComplex = `drawtext=text='${escapedText}':fontsize=16:fontcolor=white@0.7:x=20:y=h-30`
+    }
+  }
+  
+  // Build ffmpeg command
+  const ffmpegArgs = ["-i", "main.mp4"]
+  
+  if (pipData) {
+    ffmpegArgs.push("-i", "pip.webm")
+  }
+  
+  if (filterComplex) {
+    ffmpegArgs.push("-filter_complex", filterComplex)
+  }
+  
+  ffmpegArgs.push(
     "-c:v", "libx264",
     "-preset", "fast",
     "-c:a", "aac",
     "-shortest",
     "output.mp4"
-  ])
+  )
+  
+  await ff.exec(ffmpegArgs)
   
   onProgress?.(0.9)
   
@@ -91,7 +117,9 @@ export async function createPipVideoClient({
   
   // Clean up
   await ff.deleteFile("main.mp4")
-  await ff.deleteFile("pip.webm")
+  if (pipData) {
+    await ff.deleteFile("pip.webm")
+  }
   await ff.deleteFile("output.mp4")
   
   onProgress?.(1.0)
