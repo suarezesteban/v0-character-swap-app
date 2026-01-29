@@ -154,13 +154,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorderRef.current = mediaRecorder
-    // Mobile: request data every 1 second for better metadata handling
-    // Desktop: start normally without interval
-    if (isMobileDevice) {
-      mediaRecorder.start(1000)
-    } else {
-      mediaRecorder.start()
-    }
+    // Start recording without interval - chunks with timeslice can cause timestamp issues
+    mediaRecorder.start()
     setIsRecording(true)
     setRecordingTime(0)
 
