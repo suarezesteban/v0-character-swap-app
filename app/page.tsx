@@ -169,18 +169,7 @@ export default function Home() {
     if (user) {
       return (
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {user.avatar ? (
-              <Image src={user.avatar || "/placeholder.svg"} alt={user.name || ""} width={20} height={20} className="h-5 w-5 rounded-full" />
-            ) : (
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-800">
-                <span className="font-mono text-[10px] text-white">
-                  {user.name?.charAt(0).toLowerCase()}
-                </span>
-              </div>
-            )}
-            <span className="font-mono text-[11px] text-neutral-500">{user.name?.toLowerCase()}</span>
-          </div>
+          <span className="font-mono text-[11px] text-neutral-500">{user.name?.toLowerCase()}</span>
           <button
             onClick={logout}
             className="font-mono text-[11px] text-neutral-600 transition-colors hover:text-white"
@@ -209,14 +198,14 @@ export default function Home() {
   return (
     <main className="relative flex h-[100dvh] flex-row overflow-hidden bg-black">
       {/* Camera/Video Section */}
-      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-2") : "p-0"}`}>
+      <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-1") : "p-0"}`}>
         {resultUrl ? (
           <div className={`relative flex h-full w-full ${generatedVideoAspectRatio === "fill" ? "" : "items-center justify-center"}`}>
             <div className={`relative overflow-hidden bg-neutral-900 ${
               generatedVideoAspectRatio === "9:16"
-                ? "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-2xl"
+                ? "aspect-[9/16] h-full max-h-[95vh] w-auto rounded-lg"
                 : generatedVideoAspectRatio === "16:9"
-                  ? "aspect-video w-full max-w-4xl rounded-2xl"
+                  ? "aspect-video w-full max-w-[90%] rounded-lg"
                   : "h-full w-full"
             }`}>
               <video 
@@ -292,7 +281,6 @@ export default function Home() {
                       <video
                         ref={pipVideoRef}
                         src={sourceVideoUrl || recordedVideoUrl || ""}
-                        autoPlay
                         muted
                         playsInline
                         className="h-full w-full object-cover"
@@ -415,14 +403,15 @@ export default function Home() {
                   video.muted = false
                 }}
               />
+              {/* New video button - positioned above mobile bottom sheet */}
               <button
                 onClick={() => {
                   setShowPreview(false)
                   clearRecording()
                 }}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95"
+                className="absolute bottom-28 left-1/2 -translate-x-1/2 rounded-full bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-lg transition-all hover:bg-neutral-100 active:scale-95 md:bottom-6"
               >
-                Re-record
+                New Video
               </button>
             </div>
           </div>

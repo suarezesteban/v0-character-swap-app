@@ -59,7 +59,7 @@ export function GenerationProgress({
   }
 
   return (
-    <div className="group relative flex h-full w-full flex-col overflow-hidden">
+    <div className="group relative flex h-full w-full flex-col overflow-hidden rounded-lg">
       {/* Background character image */}
       {characterImageUrl && (
         <Image
@@ -113,7 +113,7 @@ export function GenerationProgress({
             e.stopPropagation()
             onCancel(e)
           }}
-          className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black/70 opacity-0 transition-opacity group-hover:opacity-100"
           title="Cancel"
         >
           <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

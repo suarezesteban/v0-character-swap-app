@@ -113,7 +113,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       ? "video/mp4" 
       : "video/webm;codecs=vp8,opus"
     
-    const mediaRecorder = new MediaRecorder(canvasStream, { mimeType })
+    // Use higher bitrate to preserve motion quality (especially important for mobile)
+    const mediaRecorder = new MediaRecorder(canvasStream, { 
+      mimeType,
+      videoBitsPerSecond: 5000000, // 5 Mbps for better motion preservation
+    })
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
