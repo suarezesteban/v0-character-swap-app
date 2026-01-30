@@ -169,12 +169,22 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       let mediaRecorder: MediaRecorder
       let mimeType: string
       
-      // Chrome/Firefox: Use WebM with VP8
-      mimeType = "video/webm;codecs=vp8,opus"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 5000000,
-      })
+      if (isSafari) {
+        // Safari fallback: Use MP4 with long timeslice (60s = single chunk for videos up to 30s)
+        // This ensures proper timestamps while still triggering metadata write
+        mimeType = "video/mp4"
+        mediaRecorder = new MediaRecorder(canvasStream, { 
+          mimeType,
+          videoBitsPerSecond: 8000000, // 8 Mbps for Safari
+        })
+      } else {
+        // Chrome/Firefox: Use WebM with VP8
+        mimeType = "video/webm;codecs=vp8,opus"
+        mediaRecorder = new MediaRecorder(canvasStream, { 
+          mimeType,
+          videoBitsPerSecond: 5000000,
+        })
+      }
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
@@ -194,8 +204,16 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       }
 
       mediaRecorderRef.current = mediaRecorder
-      mediaRecorder.start()
-      console.log("[v0] MediaRecorder started with mimeType:", mimeType)
+      
+      if (isSafari) {
+        // Safari: Use long timeslice (60s) to keep everything in one chunk
+        // This avoids the "fast forward" issue caused by multiple chunks with reset timestamps
+        mediaRecorder.start(60000)
+        console.log("[v0] Safari MediaRecorder started with 60s timeslice")
+      } else {
+        mediaRecorder.start()
+        console.log("[v0] MediaRecorder started with mimeType:", mimeType)
+      }
     }
     setIsRecording(true)
     setRecordingTime(0)
