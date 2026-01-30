@@ -152,7 +152,9 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
       }
-      const blob = new Blob(chunksRef.current, { type: mimeType })
+      // Use base mimeType without codecs for the blob
+      const blobType = mimeType.split(";")[0]
+      const blob = new Blob(chunksRef.current, { type: blobType })
       onVideoRecorded(blob, aspectRatio)
     }
 
