@@ -108,37 +108,29 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     chunksRef.current = []
     
-    // Detect browser type
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    // Detect if mobile for adaptive settings
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    if (isSafari) {
-      // Safari (desktop & mobile): Use MP4 with high bitrate
-      // Safari has issues with canvas-recorded video metadata
-      mimeType = "video/mp4"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 8000000, // 8 Mbps
-      })
-      console.log("[v0] Safari detected - using MP4 with 60s timeslice")
-    } else if (isMobile) {
-      // Android mobile: Use MP4 if supported, else WebM
+    if (isMobileDevice) {
+      // Mobile: Use same config as desktop but with higher bitrate
       mimeType = MediaRecorder.isTypeSupported("video/mp4") 
         ? "video/mp4" 
         : "video/webm"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 8000000, // 8 Mbps
+        videoBitsPerSecond: 8000000,
       })
     } else {
-      // Chrome/Firefox Desktop: Use WebM (works reliably with fal.ai)
-      mimeType = "video/webm;codecs=vp8,opus"
+      // Desktop: Original working config
+      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
+        ? "video/mp4" 
+        : "video/webm;codecs=vp8,opus"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
+        videoBitsPerSecond: 5000000,
       })
     }
 
@@ -147,28 +139,19 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorder.onstop = () => {
-      // Stop canvas drawing
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
       }
-      // Use base mimeType without codecs for the blob
-      const blobType = mimeType.split(";")[0]
-      const blob = new Blob(chunksRef.current, { type: blobType })
+      const blob = new Blob(chunksRef.current, { type: mimeType })
       onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder
-    
-    // Safari needs a long timeslice to force proper metadata writing
-    // but not too short to avoid timestamp issues (which cause fast-forward)
-    // 60 seconds = single chunk for videos up to 30s
-    if (isSafari) {
-      mediaRecorder.start(60000) // 60 second timeslice - single chunk
-    } else if (isMobile) {
-      mediaRecorder.start(10000) // 10 seconds for Android
+    if (isMobileDevice) {
+      mediaRecorder.start(10000)
     } else {
-      mediaRecorder.start() // No timeslice for Chrome/Firefox desktop
+      mediaRecorder.start()
     }
     setIsRecording(true)
     setRecordingTime(0)
