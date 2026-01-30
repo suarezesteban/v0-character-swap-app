@@ -83,22 +83,10 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     if (!ctx) return
 
     // Wait for video to have dimensions
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    const width = video.videoWidth || 720
+    const height = video.videoHeight || 1280
     
-    let width = video.videoWidth || 720
-    let height = video.videoHeight || 1280
-    
-    // Mobile: Reduce resolution to avoid issues with fal.ai processing large files
-    if (isMobileDevice) {
-      const maxDimension = 720 // Cap at 720p for mobile
-      if (width > maxDimension || height > maxDimension) {
-        const scale = maxDimension / Math.max(width, height)
-        width = Math.round(width * scale)
-        height = Math.round(height * scale)
-      }
-    }
-    
-    // Set canvas size
+    // Set canvas size to match video
     canvas.width = width
     canvas.height = height
 
@@ -120,17 +108,21 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     chunksRef.current = []
     
+    // Detect if mobile for adaptive settings
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
     if (isMobileDevice) {
-      // Mobile: Use lower bitrate - too high can cause issues with fal.ai processing
+      // Mobile: Use same config as desktop but with higher bitrate
+      // Safari iOS has limited MediaRecorder support, webm works better
       mimeType = MediaRecorder.isTypeSupported("video/mp4") 
         ? "video/mp4" 
         : "video/webm"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 2500000, // 2.5 Mbps for mobile - balance between quality and file size
+        videoBitsPerSecond: 8000000, // 8 Mbps for mobile - helps fal.ai detect motion
       })
     } else {
       // Desktop: Original working config - mp4 if supported, else webm with vp8
@@ -158,10 +150,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorderRef.current = mediaRecorder
-    // Mobile Safari needs timeslice to write proper metadata, but use long interval to avoid timestamp issues
-    // Desktop works better without timeslice
+    // Mobile needs timeslice for fal.ai to properly read the video metadata
+    // Using longer timeslice (10s) to reduce timestamp issues while still helping metadata
+    // Desktop works better without it
     if (isMobileDevice) {
-      mediaRecorder.start(30000) // 30 second timeslice - essentially one chunk for short recordings
+      mediaRecorder.start(10000) // Request data every 10 seconds - fewer chunks = better timestamps
     } else {
       mediaRecorder.start()
     }
