@@ -101,77 +101,54 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
     drawFrame()
 
-    // Get canvas stream and add audio from original stream
-    const canvasStream = canvas.captureStream(30)
-    const audioTracks = originalStreamRef.current.getAudioTracks()
-    audioTracks.forEach(track => canvasStream.addTrack(track))
+    // Detect browser
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    
+    // Choose stream source:
+    // - Safari: Use original camera stream (not canvas) to get proper metadata
+    //   Trade-off: Video won't be mirrored, but fal.ai will accept it
+    // - Chrome/Firefox: Use canvas stream for mirrored video
+    let recordingStream: MediaStream
+    
+    if (isSafari) {
+      // Safari: Record directly from camera (proper metadata, but not mirrored)
+      recordingStream = originalStreamRef.current
+      console.log("[v0] Safari detected - using direct camera stream (video won't be mirrored)")
+    } else {
+      // Chrome/Firefox: Use canvas stream (mirrored video)
+      const canvasStream = canvas.captureStream(30)
+      const audioTracks = originalStreamRef.current.getAudioTracks()
+      audioTracks.forEach(track => canvasStream.addTrack(track))
+      recordingStream = canvasStream
+      console.log("[v0] Chrome/Firefox - using canvas stream (mirrored video)")
+    }
 
     chunksRef.current = []
     
-    // Detect browser and device
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    const isChrome = /chrome/i.test(navigator.userAgent) && !/edge/i.test(navigator.userAgent)
-    
-    // Check supported mimeTypes
-    const mp4Supported = MediaRecorder.isTypeSupported("video/mp4")
-    const webmSupported = MediaRecorder.isTypeSupported("video/webm")
-    const webmVp8Supported = MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-    
-    console.log("[v0] Recording Debug - Browser Detection:", {
-      isMobileDevice,
-      isSafari,
-      isChrome,
-      userAgent: navigator.userAgent.substring(0, 100)
-    })
-    
-    console.log("[v0] Recording Debug - MimeType Support:", {
-      mp4Supported,
-      webmSupported,
-      webmVp8Supported
-    })
-    
     let mediaRecorder: MediaRecorder
     let mimeType: string
-    let bitrate: number
-    let timeslice: number | undefined
     
-    if (isMobileDevice) {
-      // Mobile: Use same config as desktop but with higher bitrate
-      mimeType = mp4Supported ? "video/mp4" : "video/webm"
-      bitrate = 8000000 // 8 Mbps
-      timeslice = 10000 // 10 seconds
-      mediaRecorder = new MediaRecorder(canvasStream, { 
+    if (isSafari) {
+      // Safari: Use MP4 which has better metadata support
+      mimeType = "video/mp4"
+      mediaRecorder = new MediaRecorder(recordingStream, { 
         mimeType,
-        videoBitsPerSecond: bitrate,
+        videoBitsPerSecond: 5000000,
       })
     } else {
-      // Desktop: Original working config
-      mimeType = mp4Supported ? "video/mp4" : "video/webm;codecs=vp8,opus"
-      bitrate = 5000000 // 5 Mbps
-      timeslice = undefined // No timeslice for desktop
-      mediaRecorder = new MediaRecorder(canvasStream, { 
+      // Chrome/Firefox: Use WebM with VP8
+      mimeType = "video/webm;codecs=vp8,opus"
+      mediaRecorder = new MediaRecorder(recordingStream, { 
         mimeType,
-        videoBitsPerSecond: bitrate,
+        videoBitsPerSecond: 5000000,
       })
     }
     
-    console.log("[v0] Recording Debug - MediaRecorder Config:", {
-      mimeType,
-      bitrate: bitrate / 1000000 + " Mbps",
-      timeslice: timeslice ? timeslice / 1000 + "s" : "none",
-      canvasWidth: width,
-      canvasHeight: height
-    })
+    console.log("[v0] MediaRecorder config:", { mimeType, isSafari })
 
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         chunksRef.current.push(e.data)
-        console.log("[v0] Recording Debug - Chunk received:", {
-          chunkNumber: chunksRef.current.length,
-          chunkSize: (e.data.size / 1024).toFixed(2) + " KB",
-          chunkType: e.data.type
-        })
       }
     }
 
@@ -182,32 +159,21 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         animationFrameRef.current = null
       }
       
-      const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
-      console.log("[v0] Recording Debug - Recording Stopped:", {
-        totalChunks: chunksRef.current.length,
-        totalSize: (totalSize / 1024 / 1024).toFixed(2) + " MB",
-        mimeType
-      })
-      
-      const blob = new Blob(chunksRef.current, { type: mimeType })
-      console.log("[v0] Recording Debug - Blob Created:", {
-        blobSize: (blob.size / 1024 / 1024).toFixed(2) + " MB",
-        blobType: blob.type
+      // Use base mimeType without codecs
+      const blobMimeType = mimeType.split(";")[0]
+      const blob = new Blob(chunksRef.current, { type: blobMimeType })
+      console.log("[v0] Recording stopped:", { 
+        chunks: chunksRef.current.length, 
+        size: (blob.size / 1024 / 1024).toFixed(2) + " MB",
+        type: blob.type 
       })
       
       onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder
-    
-    // Start recording with or without timeslice
-    if (timeslice) {
-      mediaRecorder.start(timeslice)
-      console.log("[v0] Recording Debug - Started with timeslice:", timeslice / 1000 + "s")
-    } else {
-      mediaRecorder.start()
-      console.log("[v0] Recording Debug - Started without timeslice")
-    }
+    mediaRecorder.start()
+    console.log("[v0] Recording started")
     setIsRecording(true)
     setRecordingTime(0)
 
