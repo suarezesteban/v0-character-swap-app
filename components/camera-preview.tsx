@@ -184,13 +184,16 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         animationFrameRef.current = null
       }
       const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
+      // Use base mimeType without codecs for the Blob
+      const blobMimeType = mimeType.split(";")[0]
       console.log("[v0] Recording stopped:", { 
         chunks: chunksRef.current.length, 
         totalSize,
         totalSizeMB: (totalSize / 1024 / 1024).toFixed(2) + " MB",
-        mimeType 
+        mimeType,
+        blobMimeType 
       })
-      const blob = new Blob(chunksRef.current, { type: mimeType })
+      const blob = new Blob(chunksRef.current, { type: blobMimeType })
       console.log("[v0] Blob created:", { size: blob.size, type: blob.type })
       onVideoRecorded(blob, aspectRatio)
     }
