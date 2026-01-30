@@ -10,8 +10,6 @@ interface UseVideoRecordingReturn {
   uploadedVideoUrl: string | null
   recordedAspectRatio: "9:16" | "16:9" | "fill"
   isUploading: boolean
-  isProcessing: boolean
-  processingProgress: number
   showPreview: boolean
   setShowPreview: (show: boolean) => void
   handleVideoRecorded: (blob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
@@ -26,8 +24,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null)
   const [recordedAspectRatio, setRecordedAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isUploading, setIsUploading] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [processingProgress, setProcessingProgress] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
 
   // Create object URL when video changes
@@ -41,7 +37,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [recordedVideo])
 
-  // Upload video when recorded
+  // Auto-upload video when recorded
   const uploadVideo = useCallback(async (blob: Blob) => {
     setIsUploading(true)
     try {
@@ -52,6 +48,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       setUploadedVideoUrl(videoBlob.url)
     } catch (error) {
       console.error("Failed to upload video:", error)
+      // Don't fail - user can still generate, it will upload then
     } finally {
       setIsUploading(false)
     }
@@ -192,8 +189,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     uploadedVideoUrl,
     recordedAspectRatio,
     isUploading,
-    isProcessing,
-    processingProgress,
     showPreview,
     setShowPreview,
     handleVideoRecorded,

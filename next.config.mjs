@@ -10,7 +10,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**.public.blob.vercel-storage.com",
+        hostname: "*.public.blob.vercel-storage.com",
       },
       {
         protocol: "https", 
@@ -18,7 +18,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "7zjbnnvanyvles15.public.blob.vercel-storage.com",
+        hostname: "hebbkx1anhila5yf.public.blob.vercel-storage.com",
       },
     ],
     // Enable Next.js image optimization for faster loading

@@ -47,13 +47,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log("[v0] Starting generation:", { 
-      generationId, 
-      videoUrl, 
-      characterImageUrl,
-      characterName 
-    })
-
     // Start the durable workflow using workflow/api
     // This returns immediately - the workflow runs in the background
     const run = await start(generateVideoWorkflow, [{
@@ -63,8 +56,6 @@ export async function POST(request: NextRequest) {
       characterName: characterName || undefined,
       userEmail: sendEmail ? userEmail : undefined,
     }])
-    
-    console.log("[v0] Workflow started:", { generationId, runId: run.runId })
 
     return NextResponse.json({
       success: true,
