@@ -462,11 +462,16 @@ export function CharacterGrid({
       {onGenerate && (
         <div className="shrink-0 pt-2 md:pt-4">
           <div className="flex flex-col gap-1.5 md:gap-4">
-            <p className={cn(
-              "hidden font-mono text-[10px] text-neutral-600 md:block",
-              !canGenerate && "opacity-50"
-            )}>
-              generation takes 5-6 minutes
+            <p className="hidden font-mono text-[10px] text-neutral-600 md:block">
+              created by{" "}
+              <a 
+                href="https://x.com/estebansuarez" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-neutral-500 transition-colors hover:text-white"
+              >
+                @estebansuarez
+              </a>
             </p>
             {generateError && (
               <p className="font-mono text-[10px] text-amber-400 md:text-[11px]">
