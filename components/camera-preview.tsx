@@ -150,13 +150,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let videoBitrate: number
     
     if (isSafari) {
-      // Safari (macOS and iOS): Use MP4
-      mimeType = "video/mp4"
-      videoBitrate = isMobile ? 2500000 : 5000000
-      mediaRecorder = new MediaRecorder(recordingStream, { 
-        mimeType,
-        videoBitsPerSecond: videoBitrate,
-      })
+      // Safari: Let it choose its preferred format - don't force anything
+      // Safari knows best what it supports
+      mediaRecorder = new MediaRecorder(recordingStream)
+      mimeType = mediaRecorder.mimeType || "video/mp4"
+      videoBitrate = 0 // default
     } else {
       // Chrome/Firefox: Use WebM with VP8
       mimeType = "video/webm;codecs=vp8,opus"
@@ -198,15 +196,9 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorderRef.current = mediaRecorder
-    // Safari needs timeslice to write proper metadata, but use long interval to avoid timestamp issues
-    // Chrome/Firefox work better without timeslice
-    const timeslice = isSafari ? 30000 : undefined
-    console.log("[v0] Starting MediaRecorder with timeslice:", timeslice, { isSafari })
-    if (timeslice) {
-      mediaRecorder.start(timeslice)
-    } else {
-      mediaRecorder.start()
-    }
+    // Start without timeslice - let browser handle everything
+    console.log("[v0] Starting MediaRecorder:", { isSafari, mimeType: mediaRecorder.mimeType })
+    mediaRecorder.start()
     setIsRecording(true)
     setRecordingTime(0)
 
