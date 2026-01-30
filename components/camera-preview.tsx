@@ -126,10 +126,22 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
     drawFrame()
 
-    // Get canvas stream and add audio from original stream
-    const canvasStream = canvas.captureStream(30)
-    const audioTracks = originalStreamRef.current.getAudioTracks()
-    audioTracks.forEach(track => canvasStream.addTrack(track))
+    // Get stream for recording
+    let recordingStream: MediaStream
+    
+    if (isSafari) {
+      // Safari: Record directly from camera stream (not canvas) to avoid metadata issues
+      // Video won't be mirrored but at least it will work with fal.ai
+      recordingStream = originalStreamRef.current
+      console.log("[v0] Safari: Using direct camera stream (no canvas)")
+    } else {
+      // Chrome/Firefox: Use canvas stream for mirrored video
+      const canvasStream = canvas.captureStream(30)
+      const audioTracks = originalStreamRef.current.getAudioTracks()
+      audioTracks.forEach(track => canvasStream.addTrack(track))
+      recordingStream = canvasStream
+      console.log("[v0] Chrome/Firefox: Using canvas stream (mirrored)")
+    }
 
     chunksRef.current = []
     
@@ -138,10 +150,10 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let videoBitrate: number
     
     if (isSafari) {
-      // Safari (macOS and iOS): Use MP4, needs specific handling
+      // Safari (macOS and iOS): Use MP4
       mimeType = "video/mp4"
-      videoBitrate = isMobile ? 2500000 : 5000000 // Lower bitrate for mobile
-      mediaRecorder = new MediaRecorder(canvasStream, { 
+      videoBitrate = isMobile ? 2500000 : 5000000
+      mediaRecorder = new MediaRecorder(recordingStream, { 
         mimeType,
         videoBitsPerSecond: videoBitrate,
       })
@@ -149,7 +161,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       // Chrome/Firefox: Use WebM with VP8
       mimeType = "video/webm;codecs=vp8,opus"
       videoBitrate = 5000000 // 5 Mbps
-      mediaRecorder = new MediaRecorder(canvasStream, { 
+      mediaRecorder = new MediaRecorder(recordingStream, { 
         mimeType,
         videoBitsPerSecond: videoBitrate,
       })
