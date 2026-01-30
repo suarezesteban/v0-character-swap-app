@@ -41,13 +41,23 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   const uploadVideo = useCallback(async (blob: Blob) => {
     setIsUploading(true)
     try {
-      const videoBlob = await upload(`videos/${Date.now()}-recording.webm`, blob, {
+      // Determine file extension based on blob type
+      let extension = "webm"
+      if (blob.type.includes("mp4")) {
+        extension = "mp4"
+      } else if (blob.type.includes("quicktime")) {
+        extension = "mov"
+      }
+      console.log("[v0] Uploading video - type:", blob.type, "extension:", extension, "size:", blob.size)
+      
+      const videoBlob = await upload(`videos/${Date.now()}-recording.${extension}`, blob, {
         access: "public",
         handleUploadUrl: "/api/upload",
       })
+      console.log("[v0] Video uploaded successfully:", videoBlob.url)
       setUploadedVideoUrl(videoBlob.url)
     } catch (error) {
-      console.error("Failed to upload video:", error)
+      console.error("[v0] Failed to upload video:", error)
       // Don't fail - user can still generate, it will upload then
     } finally {
       setIsUploading(false)
