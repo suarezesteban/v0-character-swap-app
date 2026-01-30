@@ -134,10 +134,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         videoBitsPerSecond: 8000000, // 8 Mbps
       })
     } else {
-      // Chrome/Firefox Desktop: Original working config
-      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
-        ? "video/mp4" 
-        : "video/webm;codecs=vp8,opus"
+      // Chrome/Firefox Desktop: Use WebM (works reliably with fal.ai)
+      mimeType = "video/webm;codecs=vp8,opus"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
         videoBitsPerSecond: 5000000, // 5 Mbps
