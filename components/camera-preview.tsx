@@ -116,21 +116,22 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     
     if (isMobileDevice) {
       // Mobile: Use same config as desktop but with higher bitrate
+      // Safari iOS has limited MediaRecorder support, webm works better
       mimeType = MediaRecorder.isTypeSupported("video/mp4") 
         ? "video/mp4" 
         : "video/webm"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 8000000,
+        videoBitsPerSecond: 8000000, // 8 Mbps for mobile - helps fal.ai detect motion
       })
     } else {
-      // Desktop: Original working config
+      // Desktop: Original working config - mp4 if supported, else webm with vp8
       mimeType = MediaRecorder.isTypeSupported("video/mp4") 
         ? "video/mp4" 
         : "video/webm;codecs=vp8,opus"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 5000000,
+        videoBitsPerSecond: 5000000, // 5 Mbps
       })
     }
 
@@ -139,6 +140,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorder.onstop = () => {
+      // Stop canvas drawing
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
@@ -148,8 +150,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorderRef.current = mediaRecorder
+    // Mobile needs timeslice for fal.ai to properly read the video metadata
+    // Using longer timeslice (10s) to reduce timestamp issues while still helping metadata
+    // Desktop works better without it
     if (isMobileDevice) {
-      mediaRecorder.start(10000)
+      mediaRecorder.start(10000) // Request data every 10 seconds - fewer chunks = better timestamps
     } else {
       mediaRecorder.start()
     }
