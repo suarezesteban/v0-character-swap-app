@@ -76,6 +76,8 @@ export default function Home() {
     uploadedVideoUrl,
     recordedAspectRatio,
     isUploading,
+    isProcessing,
+    processingProgress,
     showPreview,
     setShowPreview,
     handleVideoRecorded,
@@ -465,7 +467,8 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-
+                isProcessingVideo={isProcessing}
+                processingProgress={processingProgress}
               >
                 <GenerationsPanel
                 onSelectVideo={(url, sourceUrl, aspectRatio) => {
@@ -523,7 +526,7 @@ export default function Home() {
           {bottomSheetExpanded && (
             <>
               {renderAuthSection("mobile")}
-              <CharacterGrid
+<CharacterGrid
                 selectedId={selectedCharacter}
                 onSelect={setSelectedCharacter}
                 customCharacters={customCharacters}
@@ -535,7 +538,8 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-
+                isProcessingVideo={isProcessing}
+                processingProgress={processingProgress}
               >
                 <GenerationsPanel
                   onSelectVideo={(url, sourceUrl) => {

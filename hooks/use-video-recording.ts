@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { upload } from "@vercel/blob/client"
 import { MAX_VIDEO_SIZE, MAX_VIDEO_DURATION, STORAGE_KEYS } from "@/lib/constants"
+import { processVideoForUpload, needsVideoProcessing } from "@/lib/process-video"
 
 interface UseVideoRecordingReturn {
   recordedVideo: Blob | null
@@ -10,6 +11,8 @@ interface UseVideoRecordingReturn {
   uploadedVideoUrl: string | null
   recordedAspectRatio: "9:16" | "16:9" | "fill"
   isUploading: boolean
+  isProcessing: boolean
+  processingProgress: number
   showPreview: boolean
   setShowPreview: (show: boolean) => void
   handleVideoRecorded: (blob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
@@ -24,6 +27,8 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null)
   const [recordedAspectRatio, setRecordedAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [isUploading, setIsUploading] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [processingProgress, setProcessingProgress] = useState(0)
   const [showPreview, setShowPreview] = useState(false)
 
   // Create object URL when video changes
@@ -37,11 +42,32 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [recordedVideo])
 
-  // Auto-upload video when recorded
+  // Process and upload video when recorded
   const uploadVideo = useCallback(async (blob: Blob) => {
+    let videoToUpload = blob
+    let extension = "webm"
+    
+    // For Safari, process video with ffmpeg to fix metadata
+    if (needsVideoProcessing()) {
+      setIsProcessing(true)
+      setProcessingProgress(0)
+      try {
+        console.log("[v0] Safari detected - processing video with ffmpeg")
+        videoToUpload = await processVideoForUpload(blob, setProcessingProgress)
+        extension = "mp4"
+        console.log("[v0] Video processed successfully")
+      } catch (error) {
+        console.error("[v0] Failed to process video:", error)
+        // Continue with original video as fallback
+      } finally {
+        setIsProcessing(false)
+        setProcessingProgress(0)
+      }
+    }
+    
     setIsUploading(true)
     try {
-      const videoBlob = await upload(`videos/${Date.now()}-recording.webm`, blob, {
+      const videoBlob = await upload(`videos/${Date.now()}-recording.${extension}`, videoToUpload, {
         access: "public",
         handleUploadUrl: "/api/upload",
       })
@@ -189,6 +215,8 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     uploadedVideoUrl,
     recordedAspectRatio,
     isUploading,
+    isProcessing,
+    processingProgress,
     showPreview,
     setShowPreview,
     handleVideoRecorded,
