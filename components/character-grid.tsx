@@ -465,12 +465,12 @@ export function CharacterGrid({
             <p className="hidden font-mono text-[10px] text-neutral-600 md:block">
               created by{" "}
               <a 
-                href="https://x.com/estebansuarez" 
+                href="https://x.com/EstebanSuarez" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-neutral-500 transition-colors hover:text-white"
               >
-                @estebansuarez
+                @EstebanSuarez
               </a>
             </p>
             {generateError && (
