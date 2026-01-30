@@ -108,30 +108,26 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     chunksRef.current = []
     
-    // Detect if mobile for adaptive settings
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    // Detect Safari (both desktop and mobile) - has different MediaRecorder behavior
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    if (isMobileDevice) {
-      // Mobile: Use same config as desktop but with higher bitrate
-      // Safari iOS has limited MediaRecorder support, webm works better
-      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
-        ? "video/mp4" 
-        : "video/webm"
+    if (isSafari) {
+      // Safari (macOS and iOS): Use MP4, needs timeslice for proper metadata
+      mimeType = "video/mp4"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 8000000, // 8 Mbps for mobile - helps fal.ai detect motion
+        videoBitsPerSecond: isMobile ? 8000000 : 5000000,
       })
     } else {
-      // Desktop: Original working config - mp4 if supported, else webm with vp8
-      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
-        ? "video/mp4" 
-        : "video/webm;codecs=vp8,opus"
+      // Chrome/Firefox: Use WebM with VP8
+      mimeType = "video/webm;codecs=vp8,opus"
       mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
+        videoBitsPerSecond: 5000000,
       })
     }
 
@@ -145,16 +141,17 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
       }
-      const blob = new Blob(chunksRef.current, { type: mimeType })
+      // Use base mimeType without codecs for the Blob
+      const blobMimeType = mimeType.split(";")[0]
+      const blob = new Blob(chunksRef.current, { type: blobMimeType })
       onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder
-    // Mobile needs timeslice for fal.ai to properly read the video metadata
-    // Using longer timeslice (10s) to reduce timestamp issues while still helping metadata
-    // Desktop works better without it
-    if (isMobileDevice) {
-      mediaRecorder.start(10000) // Request data every 10 seconds - fewer chunks = better timestamps
+    // Safari needs timeslice for fal.ai to properly read the video metadata
+    // Chrome/Firefox work better without it
+    if (isSafari) {
+      mediaRecorder.start(10000) // Request data every 10 seconds
     } else {
       mediaRecorder.start()
     }
