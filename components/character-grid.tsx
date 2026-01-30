@@ -50,9 +50,6 @@ interface CharacterGridProps {
   hasVideo?: boolean
   hasCharacter?: boolean
   onGenerate?: () => void
-  // Video processing state (for Safari)
-  isProcessingVideo?: boolean
-  processingProgress?: number
 }
 
 export function CharacterGrid({ 
@@ -69,8 +66,6 @@ export function CharacterGrid({
   hasVideo = false,
   hasCharacter = false,
   onGenerate,
-  isProcessingVideo = false,
-  processingProgress = 0,
 }: CharacterGridProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState("")
@@ -498,29 +493,9 @@ export function CharacterGrid({
                   : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
               )}
             >
-              {isProcessingVideo ? `Processing... ${processingProgress}%` : "Generate video"}
+              Generate video
             </button>
-            
-            {/* Processing status for Safari */}
-            {isProcessingVideo && (
-              <p className="mt-2 text-center font-mono text-[10px] text-neutral-500">
-                Optimizing video for best results...
-              </p>
-            )}
           </div>
-          
-          {/* Credits */}
-          <p className="mt-3 text-center font-mono text-[10px] text-neutral-600">
-            created by{" "}
-            <a 
-              href="https://x.com/estebansuarez" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-neutral-500 transition-colors hover:text-white"
-            >
-              @estebansuarez
-            </a>
-          </p>
         </div>
       )}
     </div>
