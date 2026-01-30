@@ -86,7 +86,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       
       if (hasValidDuration && duration > MAX_VIDEO_DURATION + 1) {
         const durationSeconds = Math.round(duration)
-        alert(\`Video is too long (\${durationSeconds}s). Please record up to \${MAX_VIDEO_DURATION} seconds.\`)
+        alert(`Video is too long (${durationSeconds}s). Please record up to ${MAX_VIDEO_DURATION} seconds.`)
         return
       }
       
