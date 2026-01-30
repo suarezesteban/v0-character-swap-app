@@ -74,72 +74,92 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       timerRef.current = null
     }
 
-    // Detect browser type
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    // Check if MediaRecorder is available
+    if (typeof MediaRecorder === "undefined") {
+      alert("Recording is not supported on this browser. Please use Chrome, Firefox, or Safari 14.5+")
+      return
+    }
+
+    // Detect browser type - more robust detection
+    const ua = navigator.userAgent
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua) || isIOS
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(ua) || isIOS
+    
+    console.log("[v0] Browser detection - Safari:", isSafari, "iOS:", isIOS, "Mobile:", isMobile)
+    console.log("[v0] User Agent:", ua)
     
     // Record directly from camera stream for all browsers
-    // Canvas captureStream causes metadata issues (duration = Infinity) in WebM
-    // The video preview is mirrored via CSS, recording is not mirrored
     const recordingStream = originalStreamRef.current
-    console.log("[v0] Recording directly from camera stream (all browsers)")
+    console.log("[v0] Recording directly from camera stream")
 
     chunksRef.current = []
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    // Determine best codec based on browser support
-    const supportedTypes = [
-      "video/mp4;codecs=avc1",
+    // Check which types are supported
+    const checkTypes = [
       "video/mp4",
+      "video/mp4;codecs=avc1",
+      "video/mp4;codecs=h264",
+      "video/webm",
+      "video/webm;codecs=vp9",
+      "video/webm;codecs=vp8",
       "video/webm;codecs=vp9,opus",
       "video/webm;codecs=vp8,opus",
-      "video/webm",
     ]
     
+    console.log("[v0] Checking supported MIME types:")
+    for (const type of checkTypes) {
+      const supported = MediaRecorder.isTypeSupported(type)
+      console.log(`[v0]   ${type}: ${supported ? "YES" : "no"}`)
+    }
+    
+    // Find best supported type
     const findSupportedType = () => {
-      for (const type of supportedTypes) {
+      // Prefer MP4 for Safari, WebM for others
+      const preferredOrder = isSafari 
+        ? ["video/mp4", "video/mp4;codecs=avc1", "video/webm", "video/webm;codecs=vp8"]
+        : ["video/webm", "video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/mp4"]
+      
+      for (const type of preferredOrder) {
         if (MediaRecorder.isTypeSupported(type)) {
-          console.log("[v0] Found supported type:", type)
           return type
         }
       }
       return ""
     }
     
-    if (isSafari || isIOS) {
-      // Safari/iOS: Use MP4 (only format Safari supports)
-      mimeType = "video/mp4"
-      try {
+    const selectedType = findSupportedType()
+    console.log("[v0] Selected MIME type:", selectedType || "(none - using default)")
+    
+    try {
+      if (selectedType) {
+        mimeType = selectedType.split(";")[0] // Use base type without codecs
         mediaRecorder = new MediaRecorder(recordingStream, { 
           mimeType,
-          videoBitsPerSecond: 8000000, // 8 Mbps
+          videoBitsPerSecond: isSafari ? 8000000 : 5000000,
         })
-      } catch {
-        // Fallback without options
-        console.log("[v0] Safari MediaRecorder fallback - no options")
+      } else {
+        // Let browser choose default
+        console.log("[v0] No specific type supported, using browser default")
         mediaRecorder = new MediaRecorder(recordingStream)
         mimeType = mediaRecorder.mimeType || "video/mp4"
       }
-      console.log("[v0] Safari/iOS - using mimeType:", mimeType)
-    } else if (isMobile) {
-      // Android mobile: Use MP4 if supported, else WebM
-      mimeType = findSupportedType() || "video/webm"
-      mediaRecorder = new MediaRecorder(recordingStream, { 
-        mimeType: mimeType.split(";")[0], // Use base type
-        videoBitsPerSecond: 8000000, // 8 Mbps
-      })
-      console.log("[v0] Android mobile - using mimeType:", mimeType)
-    } else {
-      // Chrome/Firefox Desktop: Use WebM
-      mimeType = findSupportedType() || "video/webm"
-      mediaRecorder = new MediaRecorder(recordingStream, { 
-        mimeType: mimeType.split(";")[0],
-        videoBitsPerSecond: 5000000, // 5 Mbps
-      })
-      console.log("[v0] Chrome/Firefox desktop - using mimeType:", mimeType)
+      console.log("[v0] MediaRecorder created with mimeType:", mediaRecorder.mimeType)
+    } catch (err) {
+      console.error("[v0] MediaRecorder creation failed:", err)
+      // Try without any options
+      try {
+        mediaRecorder = new MediaRecorder(recordingStream)
+        mimeType = mediaRecorder.mimeType || "video/mp4"
+        console.log("[v0] MediaRecorder fallback created with mimeType:", mimeType)
+      } catch (err2) {
+        console.error("[v0] MediaRecorder fallback also failed:", err2)
+        alert("Unable to start recording. Please try a different browser.")
+        return
+      }
     }
 
     mediaRecorder.ondataavailable = (e) => {
@@ -154,10 +174,16 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorder.onstop = () => {
-      // Use base mimeType without codecs for the blob
       const blobType = mimeType.split(";")[0]
       const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
       console.log("[v0] Recording stopped. Total chunks:", chunksRef.current.length, "Total size:", totalSize)
+      
+      if (chunksRef.current.length === 0 || totalSize === 0) {
+        console.error("[v0] No data recorded!")
+        alert("Recording failed - no data captured. Please try again.")
+        return
+      }
+      
       const blob = new Blob(chunksRef.current, { type: blobType })
       console.log("[v0] Final blob size:", blob.size, "type:", blob.type)
       onVideoRecorded(blob, aspectRatio)
@@ -165,23 +191,30 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     mediaRecorderRef.current = mediaRecorder
     
-    // Start recording with timeslice for proper chunk handling
-    // Using timeslice helps with metadata in the final video
-    if (isSafari || isIOS) {
-      mediaRecorder.start(60000) // 60 second timeslice - single chunk for videos up to 30s
-    } else {
-      mediaRecorder.start(1000) // 1 second chunks for all other browsers
+    // Start recording
+    // Safari/iOS: use longer timeslice or none for proper metadata
+    // Chrome/Firefox: use shorter timeslice for chunked data
+    try {
+      if (isSafari || isIOS) {
+        mediaRecorder.start() // No timeslice for Safari - let it handle naturally
+        console.log("[v0] Recording started (Safari mode - no timeslice)")
+      } else {
+        mediaRecorder.start(1000) // 1 second chunks
+        console.log("[v0] Recording started (1s timeslice)")
+      }
+    } catch (err) {
+      console.error("[v0] MediaRecorder.start() failed:", err)
+      alert("Failed to start recording. Please try again.")
+      return
     }
     
-    console.log("[v0] Recording started, state:", mediaRecorder.state)
+    console.log("[v0] Recording state:", mediaRecorder.state)
     setIsRecording(true)
     setRecordingTime(0)
 
     timerRef.current = setInterval(() => {
       setRecordingTime((prev) => {
-        // Stop at 29 seconds to ensure final video is ~30s max (MediaRecorder adds slight delay)
         if (prev >= 29) {
-          // Stop recording
           if (mediaRecorderRef.current?.state === "recording") {
             mediaRecorderRef.current.stop()
           }
@@ -190,7 +223,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
             clearInterval(timerRef.current)
             timerRef.current = null
           }
-          return 30 // Display as 30 for user
+          return 30
         }
         return prev + 1
       })
