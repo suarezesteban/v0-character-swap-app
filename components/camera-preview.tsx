@@ -12,8 +12,6 @@ interface CameraPreviewProps {
 
 export function CameraPreview({ onVideoRecorded, isProcessing, progress, progressMessage, isError }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationFrameRef = useRef<number | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const originalStreamRef = useRef<MediaStream | null>(null)
@@ -64,12 +62,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       }
       if (timerRef.current) clearInterval(timerRef.current)
       if (countdownRef.current) clearInterval(countdownRef.current)
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
     }
   }, [startCamera])
 
   const beginRecording = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current || !originalStreamRef.current) return
+    if (!videoRef.current || !originalStreamRef.current) return
     
     // Clear any existing timer first
     if (timerRef.current) {
@@ -83,17 +80,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       return
     }
 
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext("2d", { willReadFrequently: true })
-    if (!ctx) return
-
-    // Get video dimensions
-    const width = video.videoWidth || 1280
-    const height = video.videoHeight || 720
-    canvas.width = width
-    canvas.height = height
-
     // Detect browser type
     const ua = navigator.userAgent
     const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -101,32 +87,12 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     
     console.log("[v0] Browser detection - Safari:", isSafari, "iOS:", isIOS)
     
-    let recordingStream: MediaStream
-    
-    if (isSafari || isIOS) {
-      // Safari/iOS: Record directly from camera (canvas.captureStream produces black video)
-      // Video will NOT be mirrored in the final output
-      recordingStream = originalStreamRef.current
-      console.log("[v0] Safari/iOS - recording directly from camera (no mirror)")
-    } else {
-      // Chrome/Firefox: Use canvas to mirror the video
-      const drawFrame = () => {
-        ctx.save()
-        ctx.translate(width, 0)
-        ctx.scale(-1, 1)
-        ctx.drawImage(video, 0, 0, width, height)
-        ctx.restore()
-        animationFrameRef.current = requestAnimationFrame(drawFrame)
-      }
-      drawFrame()
-
-      // Get canvas stream and add audio from original stream
-      const canvasStream = canvas.captureStream(30)
-      const audioTracks = originalStreamRef.current.getAudioTracks()
-      audioTracks.forEach(track => canvasStream.addTrack(track))
-      recordingStream = canvasStream
-      console.log("[v0] Chrome/Firefox - using canvas for mirrored recording")
-    }
+    // IMPORTANT: Record directly from camera stream for ALL browsers
+    // canvas.captureStream() produces WebM with corrupted metadata that fal.ai rejects
+    // The preview is mirrored via CSS, but the recording will NOT be mirrored
+    // This matches behavior of TikTok, Instagram, etc.
+    const recordingStream = originalStreamRef.current
+    console.log("[v0] Recording directly from camera stream (all browsers)")
 
     chunksRef.current = []
     
@@ -186,12 +152,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorder.onstop = () => {
-      // Stop canvas drawing
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
-      }
-      
       const blobType = mimeType.split(";")[0]
       const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
       console.log("[v0] Recording stopped. Chunks:", chunksRef.current.length, "Size:", totalSize)
@@ -294,11 +254,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop()
     }
-    // Stop canvas drawing
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
-    }
     setIsRecording(false)
     if (timerRef.current) {
       clearInterval(timerRef.current)
@@ -327,8 +282,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
           className="h-full w-full object-contain md:object-cover"
           style={{ transform: "scaleX(-1)" }}
         />
-        {/* Hidden canvas for mirrored recording (Chrome/Firefox) */}
-        <canvas ref={canvasRef} className="hidden" />
         
         {/* Flash effect */}
         {showFlash && (
