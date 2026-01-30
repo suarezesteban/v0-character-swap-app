@@ -37,7 +37,8 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [recordedVideo])
 
-  // Auto-upload video when recorded
+  // Upload video to Vercel Blob
+  // Server-side workflow will handle conversion to MP4 if needed via fal.ai storage
   const uploadVideo = useCallback(async (blob: Blob) => {
     setIsUploading(true)
     try {
@@ -110,7 +111,7 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       setRecordedVideo(blob)
       setRecordedAspectRatio(detectedAspectRatio)
       setShowPreview(true)
-      // Start uploading immediately in background
+      // Start converting and uploading immediately in background
       uploadVideo(blob)
     }
     

@@ -133,22 +133,27 @@ async function submitToFal(
 
   fal.config({ credentials: process.env.FAL_KEY })
 
-  // Download video from Vercel Blob and re-upload to fal.ai storage
-  // This helps fal.ai process the video format correctly
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Downloading video from Vercel Blob: ${videoUrl}`)
-  const videoFetchStart = Date.now()
-  const videoResponse = await fetch(videoUrl)
-  if (!videoResponse.ok) {
-    throw new Error(`Failed to download video: ${videoResponse.status}`)
-  }
-  const videoBlob = await videoResponse.blob()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
+  // Video should already be MP4 (converted client-side via ffmpeg.wasm)
+  // If it's still WebM (ffmpeg not available), try uploading to fal.ai storage
+  // for better format handling
+  let finalVideoUrl = videoUrl
+  
+  if (videoUrl.includes('.webm')) {
+    console.log(`[Workflow Step] [${new Date().toISOString()}] WebM detected, re-uploading to fal.ai storage for conversion...`)
+    const videoFetchStart = Date.now()
+    const videoResponse = await fetch(videoUrl)
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.status}`)
+    }
+    const videoBlob = await videoResponse.blob()
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
 
-  // Upload to fal.ai storage - this ensures proper format handling
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Uploading video to fal.ai storage...`)
-  const falUploadStart = Date.now()
-  const falVideoUrl = await fal.storage.upload(videoBlob)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${falVideoUrl}`)
+    const falUploadStart = Date.now()
+    finalVideoUrl = await fal.storage.upload(videoBlob)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
+  } else {
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Video is already MP4, using directly: ${videoUrl}`)
+  }
 
   // Build our webhook URL with both generationId and hookToken
   const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
@@ -160,13 +165,13 @@ async function submitToFal(
   const webhookUrl = `${baseUrl}/api/fal-webhook?generationId=${generationId}&hookToken=${hookToken}`
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Submitting to fal.ai with webhook: ${webhookUrl}`)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${falVideoUrl}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${finalVideoUrl}`)
 
   const falSubmitStart = Date.now()
   const { request_id } = await fal.queue.submit("fal-ai/kling-video/v2.6/standard/motion-control", {
     input: {
       image_url: characterImageUrl,
-      video_url: falVideoUrl, // Use fal.ai storage URL instead of Vercel Blob
+      video_url: finalVideoUrl,
       character_orientation: "video",
     },
     webhookUrl,
