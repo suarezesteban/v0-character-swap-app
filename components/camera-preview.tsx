@@ -101,55 +101,41 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
     drawFrame()
 
-    // Detect browser
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    
-    // Choose stream source:
-    // - Safari: Use original camera stream (not canvas) to get proper metadata
-    //   Trade-off: Video won't be mirrored, but fal.ai will accept it
-    // - Chrome/Firefox: Use canvas stream for mirrored video
-    let recordingStream: MediaStream
-    
-    if (isSafari) {
-      // Safari: Record directly from camera (proper metadata, but not mirrored)
-      recordingStream = originalStreamRef.current
-      console.log("[v0] Safari detected - using direct camera stream (video won't be mirrored)")
-    } else {
-      // Chrome/Firefox: Use canvas stream (mirrored video)
-      const canvasStream = canvas.captureStream(30)
-      const audioTracks = originalStreamRef.current.getAudioTracks()
-      audioTracks.forEach(track => canvasStream.addTrack(track))
-      recordingStream = canvasStream
-      console.log("[v0] Chrome/Firefox - using canvas stream (mirrored video)")
-    }
+    // Get canvas stream and add audio from original stream
+    const canvasStream = canvas.captureStream(30)
+    const audioTracks = originalStreamRef.current.getAudioTracks()
+    audioTracks.forEach(track => canvasStream.addTrack(track))
 
     chunksRef.current = []
+    
+    // Detect if mobile for adaptive settings
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    if (isSafari) {
-      // Safari: Use MP4 which has better metadata support
-      mimeType = "video/mp4"
-      mediaRecorder = new MediaRecorder(recordingStream, { 
+    if (isMobileDevice) {
+      // Mobile: Use same config as desktop but with higher bitrate
+      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
+        ? "video/mp4" 
+        : "video/webm"
+      mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 5000000,
+        videoBitsPerSecond: 8000000, // 8 Mbps for mobile
       })
     } else {
-      // Chrome/Firefox: Use WebM with VP8
-      mimeType = "video/webm;codecs=vp8,opus"
-      mediaRecorder = new MediaRecorder(recordingStream, { 
+      // Desktop: Original working config
+      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
+        ? "video/mp4" 
+        : "video/webm;codecs=vp8,opus"
+      mediaRecorder = new MediaRecorder(canvasStream, { 
         mimeType,
-        videoBitsPerSecond: 5000000,
+        videoBitsPerSecond: 5000000, // 5 Mbps
       })
     }
-    
-    console.log("[v0] MediaRecorder config:", { mimeType, isSafari })
 
     mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        chunksRef.current.push(e.data)
-      }
+      if (e.data.size > 0) chunksRef.current.push(e.data)
     }
 
     mediaRecorder.onstop = () => {
@@ -158,22 +144,17 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         cancelAnimationFrame(animationFrameRef.current)
         animationFrameRef.current = null
       }
-      
-      // Use base mimeType without codecs
-      const blobMimeType = mimeType.split(";")[0]
-      const blob = new Blob(chunksRef.current, { type: blobMimeType })
-      console.log("[v0] Recording stopped:", { 
-        chunks: chunksRef.current.length, 
-        size: (blob.size / 1024 / 1024).toFixed(2) + " MB",
-        type: blob.type 
-      })
-      
+      const blob = new Blob(chunksRef.current, { type: mimeType })
       onVideoRecorded(blob, aspectRatio)
     }
 
     mediaRecorderRef.current = mediaRecorder
-    mediaRecorder.start()
-    console.log("[v0] Recording started")
+    // Mobile needs timeslice for fal.ai to properly read the video metadata
+    if (isMobileDevice) {
+      mediaRecorder.start(10000) // Request data every 10 seconds
+    } else {
+      mediaRecorder.start()
+    }
     setIsRecording(true)
     setRecordingTime(0)
 
