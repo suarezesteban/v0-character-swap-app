@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState, useCallback, useEffect } from "react"
+import { isSafariBrowser, hasWebCodecs, SafariVideoEncoder } from "@/lib/safari-video-encoder"
 
 interface CameraPreviewProps {
   onVideoRecorded: (videoBlob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
@@ -15,8 +16,10 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const safariEncoderRef = useRef<SafariVideoEncoder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const originalStreamRef = useRef<MediaStream | null>(null)
+  const useSafariEncoderRef = useRef(false)
   const [isRecording, setIsRecording] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -90,73 +93,110 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     canvas.width = width
     canvas.height = height
 
-    // Draw mirrored video to canvas
-    const drawFrame = () => {
+    // Detect Safari and check if WebCodecs is available
+    const isSafari = isSafariBrowser()
+    const useWebCodecs = isSafari && hasWebCodecs()
+    useSafariEncoderRef.current = useWebCodecs
+    
+    console.log("[v0] Recording setup:", { isSafari, useWebCodecs, width, height })
+
+    // Frame counter for WebCodecs (to capture at 30fps)
+    let lastFrameTime = 0
+    const frameInterval = 1000 / 30 // 30fps = ~33ms per frame
+
+    // Draw mirrored video to canvas (and capture frames for WebCodecs)
+    const drawFrame = async (timestamp: number) => {
       ctx.save()
       ctx.translate(width, 0)
       ctx.scale(-1, 1)
       ctx.drawImage(video, 0, 0, width, height)
       ctx.restore()
+      
+      // If using WebCodecs, capture frame at 30fps
+      if (useSafariEncoderRef.current && safariEncoderRef.current) {
+        if (timestamp - lastFrameTime >= frameInterval) {
+          try {
+            await safariEncoderRef.current.addFrame(canvas)
+            lastFrameTime = timestamp
+          } catch (err) {
+            // Ignore frame capture errors, continue recording
+          }
+        }
+      }
+      
       animationFrameRef.current = requestAnimationFrame(drawFrame)
     }
-    drawFrame()
+    drawFrame(0)
 
-    // Get canvas stream and add audio from original stream
-    const canvasStream = canvas.captureStream(30)
-    const audioTracks = originalStreamRef.current.getAudioTracks()
-    audioTracks.forEach(track => canvasStream.addTrack(track))
-
-    chunksRef.current = []
-    
-    // Detect if mobile for adaptive settings
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    
-    let mediaRecorder: MediaRecorder
-    let mimeType: string
-    
-    if (isMobileDevice) {
-      // Mobile: Use same config as desktop but with higher bitrate
-      // Safari iOS has limited MediaRecorder support, webm works better
-      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
-        ? "video/mp4" 
-        : "video/webm"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 8000000, // 8 Mbps for mobile - helps fal.ai detect motion
+    if (useWebCodecs) {
+      // Safari with WebCodecs: Use mp4-muxer for proper metadata
+      // This creates MP4 files with fastStart (metadata at beginning) that fal.ai can read
+      const encoder = new SafariVideoEncoder({
+        width,
+        height,
+        frameRate: 30,
+        bitrate: 5_000_000,
+      })
+      
+      encoder.start().then(() => {
+        safariEncoderRef.current = encoder
+        console.log("[v0] Safari WebCodecs encoder started")
+      }).catch(err => {
+        console.error("[v0] Failed to start Safari encoder:", err)
+        // Fall back to regular MediaRecorder
+        useSafariEncoderRef.current = false
       })
     } else {
-      // Desktop: Original working config - mp4 if supported, else webm with vp8
-      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
-        ? "video/mp4" 
-        : "video/webm;codecs=vp8,opus"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
-      })
-    }
+      // Chrome/Firefox or Safari without WebCodecs: Use MediaRecorder
+      const canvasStream = canvas.captureStream(30)
+      const audioTracks = originalStreamRef.current.getAudioTracks()
+      audioTracks.forEach(track => canvasStream.addTrack(track))
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data)
-    }
-
-    mediaRecorder.onstop = () => {
-      // Stop canvas drawing
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
+      chunksRef.current = []
+      
+      let mediaRecorder: MediaRecorder
+      let mimeType: string
+      
+      if (isSafari) {
+        // Safari without WebCodecs: Use MP4 with timeslice
+        mimeType = "video/mp4"
+        mediaRecorder = new MediaRecorder(canvasStream, { 
+          mimeType,
+          videoBitsPerSecond: 5000000,
+        })
+      } else {
+        // Chrome/Firefox: Use WebM with VP8
+        mimeType = "video/webm;codecs=vp8,opus"
+        mediaRecorder = new MediaRecorder(canvasStream, { 
+          mimeType,
+          videoBitsPerSecond: 5000000,
+        })
       }
-      const blob = new Blob(chunksRef.current, { type: mimeType })
-      onVideoRecorded(blob, aspectRatio)
-    }
 
-    mediaRecorderRef.current = mediaRecorder
-    // Mobile needs timeslice for fal.ai to properly read the video metadata
-    // Using longer timeslice (10s) to reduce timestamp issues while still helping metadata
-    // Desktop works better without it
-    if (isMobileDevice) {
-      mediaRecorder.start(10000) // Request data every 10 seconds - fewer chunks = better timestamps
-    } else {
-      mediaRecorder.start()
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.onstop = () => {
+        // Stop canvas drawing
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current)
+          animationFrameRef.current = null
+        }
+        // Use base mimeType without codecs for the Blob
+        const blobMimeType = mimeType.split(";")[0]
+        const blob = new Blob(chunksRef.current, { type: blobMimeType })
+        console.log("[v0] MediaRecorder blob created:", { size: blob.size, type: blob.type })
+        onVideoRecorded(blob, aspectRatio)
+      }
+
+      mediaRecorderRef.current = mediaRecorder
+      
+      if (isSafari) {
+        mediaRecorder.start(10000) // Safari needs timeslice
+      } else {
+        mediaRecorder.start()
+      }
     }
     setIsRecording(true)
     setRecordingTime(0)
@@ -165,15 +205,33 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       setRecordingTime((prev) => {
         // Stop at 29 seconds to ensure final video is ~30s max (MediaRecorder adds slight delay)
         if (prev >= 29) {
-          // Stop recording
-          if (mediaRecorderRef.current?.state === "recording") {
-            mediaRecorderRef.current.stop()
-          }
-          setIsRecording(false)
+          // Stop timer first
           if (timerRef.current) {
             clearInterval(timerRef.current)
             timerRef.current = null
           }
+          
+          // Stop canvas drawing
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current)
+            animationFrameRef.current = null
+          }
+          
+          // Handle Safari WebCodecs encoder
+          if (useSafariEncoderRef.current && safariEncoderRef.current) {
+            console.log("[v0] Auto-stop: finishing Safari encoder")
+            safariEncoderRef.current.finish().then(blob => {
+              console.log("[v0] Safari encoder auto-finished, blob size:", blob.size)
+              safariEncoderRef.current = null
+              onVideoRecorded(blob, aspectRatio)
+            }).catch(err => {
+              console.error("[v0] Safari encoder auto-finish error:", err)
+            })
+          } else if (mediaRecorderRef.current?.state === "recording") {
+            mediaRecorderRef.current.stop()
+          }
+          
+          setIsRecording(false)
           return 30 // Display as 30 for user
         }
         return prev + 1
@@ -222,25 +280,42 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   // Minimum recording duration required by fal.ai (2 seconds of continuous motion)
   const MIN_RECORDING_SECONDS = 3
   
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback(async () => {
     // Prevent stopping too early - fal.ai requires at least 2s of continuous motion
     if (recordingTime < MIN_RECORDING_SECONDS) {
       return // Don't stop, need more recording time
     }
     
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop()
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
-    }
-    setIsRecording(false)
+    // Stop the timer first
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
-  }, [recordingTime])
+    
+    // Stop canvas drawing
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
+    }
+    
+    // Handle Safari WebCodecs encoder
+    if (useSafariEncoderRef.current && safariEncoderRef.current) {
+      console.log("[v0] Stopping Safari WebCodecs encoder")
+      try {
+        const blob = await safariEncoderRef.current.finish()
+        console.log("[v0] Safari encoder finished, blob size:", blob.size)
+        safariEncoderRef.current = null
+        onVideoRecorded(blob, aspectRatio)
+      } catch (err) {
+        console.error("[v0] Safari encoder finish error:", err)
+      }
+    } else if (mediaRecorderRef.current?.state === "recording") {
+      // Regular MediaRecorder path
+      mediaRecorderRef.current.stop()
+    }
+    
+    setIsRecording(false)
+  }, [recordingTime, onVideoRecorded, aspectRatio])
 
   if (hasPermission === false) {
     return (
