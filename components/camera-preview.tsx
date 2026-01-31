@@ -80,39 +80,33 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       return
     }
 
-    // Record directly from camera stream - this produces valid video files
-    // The preview is mirrored via CSS, but recording is NOT mirrored (like TikTok/Instagram)
+    // Detect browser type
+    const ua = navigator.userAgent
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua) || isIOS
+    
+    console.log("[v0] Browser detection - Safari:", isSafari, "iOS:", isIOS)
+    
+    // IMPORTANT: Record directly from camera stream for ALL browsers
+    // canvas.captureStream() produces WebM with corrupted metadata that fal.ai rejects
+    // The preview is mirrored via CSS, but the recording will NOT be mirrored
+    // This matches behavior of TikTok, Instagram, etc.
     const recordingStream = originalStreamRef.current
-    console.log("[v0] Recording directly from camera stream")
+    console.log("[v0] Recording directly from camera stream (all browsers)")
 
     chunksRef.current = []
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    // Find best supported type - MUST produce MP4 for fal.ai Kling Motion Control
-    // Kling only accepts MP4, not WebM - this is documented in their API
+    // Find best supported type
     const findSupportedType = () => {
-      const preferredOrder = [
-        // MP4 with H.264 - Chrome 125+ supports this natively
-        "video/mp4;codecs=avc1.64003E,mp4a.40.2", // H.264 High + AAC
-        "video/mp4;codecs=avc1.64003E,opus",       // H.264 High + Opus
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2", // H.264 Baseline + AAC
-        "video/mp4;codecs=avc1.42E01E",            // H.264 Baseline only
-        "video/mp4;codecs=avc1",                   // H.264 generic
-        "video/mp4",                                // MP4 generic (Safari uses this)
-        // WebM with H.264 codec - can be remuxed to MP4 on server
-        "video/webm;codecs=h264",                  // H.264 in WebM container
-        // Fallback to VP8/VP9 - will need server-side conversion
-        "video/webm;codecs=vp8,opus",
-        "video/webm;codecs=vp9,opus",
-        "video/webm",
-      ]
+      const preferredOrder = isSafari 
+        ? ["video/mp4", "video/mp4;codecs=avc1"]
+        : ["video/webm", "video/webm;codecs=vp8", "video/webm;codecs=vp9"]
       
       for (const type of preferredOrder) {
-        const supported = MediaRecorder.isTypeSupported(type)
-        console.log(`[v0] isTypeSupported("${type}"): ${supported}`)
-        if (supported) {
+        if (MediaRecorder.isTypeSupported(type)) {
           return type
         }
       }
@@ -126,7 +120,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       if (selectedType) {
         mimeType = selectedType.split(";")[0]
         mediaRecorder = new MediaRecorder(recordingStream, { 
-          mimeType: selectedType,
+          mimeType,
           videoBitsPerSecond: 5000000,
         })
       } else {
@@ -177,7 +171,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     
     // Start recording
     try {
-      mediaRecorder.start(1000) // 1 second chunks
+      if (isSafari || isIOS) {
+        mediaRecorder.start() // No timeslice for Safari
+      } else {
+        mediaRecorder.start(1000) // 1 second chunks for Chrome
+      }
       console.log("[v0] Recording started, state:", mediaRecorder.state)
     } catch (err) {
       console.error("[v0] MediaRecorder.start() failed:", err)

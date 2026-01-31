@@ -43,14 +43,12 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     setIsUploading(true)
     try {
       // Determine file extension based on blob type
-      // fal.ai Kling requires MP4 format
       let extension = "webm"
       if (blob.type.includes("mp4")) {
         extension = "mp4"
       } else if (blob.type.includes("quicktime")) {
         extension = "mov"
       }
-      // Note: video/webm;codecs=h264 is still WebM container even though it uses H.264 codec
       console.log("[v0] Uploading video - type:", blob.type, "extension:", extension, "size:", blob.size)
       
       const videoBlob = await upload(`videos/${Date.now()}-recording.${extension}`, blob, {
