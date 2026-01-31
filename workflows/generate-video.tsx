@@ -133,24 +133,56 @@ async function submitToFal(
 
   fal.config({ credentials: process.env.FAL_KEY })
 
-  // Video should already be MP4 (converted client-side via ffmpeg.wasm)
-  // If it's still WebM (ffmpeg not available), try uploading to fal.ai storage
-  // for better format handling
   let finalVideoUrl = videoUrl
   
+  // Kling AI requires MP4 with H.264 codec - WebM is NOT supported
+  // If video is WebM, we MUST convert it to MP4 using fal.ai ffmpeg-api
   if (videoUrl.includes('.webm')) {
-    console.log(`[Workflow Step] [${new Date().toISOString()}] WebM detected, re-uploading to fal.ai storage for conversion...`)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] WebM detected - converting to MP4 via fal.ai ffmpeg-api/compose...`)
+    
+    // First upload to fal.ai storage
     const videoFetchStart = Date.now()
     const videoResponse = await fetch(videoUrl)
     if (!videoResponse.ok) {
       throw new Error(`Failed to download video: ${videoResponse.status}`)
     }
     const videoBlob = await videoResponse.blob()
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes`)
 
     const falUploadStart = Date.now()
-    finalVideoUrl = await fal.storage.upload(videoBlob)
-    console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
+    const falStorageUrl = await fal.storage.upload(videoBlob)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${falStorageUrl}`)
+
+    // Use ffmpeg-api/compose to convert WebM to MP4
+    // By creating a single-track composition, ffmpeg outputs MP4 with H.264
+    const convertStart = Date.now()
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Converting via ffmpeg-api/compose...`)
+    
+    const conversionResult = await fal.subscribe("fal-ai/ffmpeg-api/compose", {
+      input: {
+        tracks: [
+          {
+            id: "video-track",
+            type: "video",
+            keyframes: [
+              {
+                timestamp: 0,
+                duration: 30000, // 30 seconds max
+                url: falStorageUrl
+              }
+            ]
+          }
+        ]
+      }
+    })
+    
+    if (conversionResult.data?.video_url) {
+      finalVideoUrl = conversionResult.data.video_url
+      console.log(`[Workflow Step] [${new Date().toISOString()}] ffmpeg-api/compose took ${Date.now() - convertStart}ms, MP4 url: ${finalVideoUrl}`)
+    } else {
+      console.error(`[Workflow Step] ffmpeg-api/compose failed:`, conversionResult)
+      throw new Error("Video conversion to MP4 failed")
+    }
   } else {
     console.log(`[Workflow Step] [${new Date().toISOString()}] Video is already MP4, using directly: ${videoUrl}`)
   }
