@@ -100,41 +100,16 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let mimeType: string
     
     // Find best supported type
-    // Safari: Uses MP4 natively (required for Kling AI)
-    // Chrome: Try MP4 first, fall back to WebM
     const findSupportedType = () => {
-      // For Safari, use MP4 (it's the only format that works well)
-      if (isSafari) {
-        const safariTypes = ["video/mp4", "video/mp4;codecs=avc1"]
-        for (const type of safariTypes) {
-          if (MediaRecorder.isTypeSupported(type)) {
-            console.log("[v0] Safari - using MP4:", type)
-            return type
-          }
-        }
-        // Safari should always support MP4, but fall back to default if not
-        console.log("[v0] Safari - using default format")
-        return ""
-      }
+      const preferredOrder = isSafari 
+        ? ["video/mp4", "video/mp4;codecs=avc1"]
+        : ["video/webm", "video/webm;codecs=vp8", "video/webm;codecs=vp9"]
       
-      // For Chrome/Firefox, try MP4 first (Chrome 120+ may support it)
-      const mp4Types = ["video/mp4", "video/mp4;codecs=avc1", "video/mp4;codecs=h264"]
-      for (const type of mp4Types) {
+      for (const type of preferredOrder) {
         if (MediaRecorder.isTypeSupported(type)) {
-          console.log("[v0] Chrome/Firefox - MP4 supported:", type)
           return type
         }
       }
-      
-      // Fall back to WebM for Chrome/Firefox
-      const webmTypes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
-      for (const type of webmTypes) {
-        if (MediaRecorder.isTypeSupported(type)) {
-          console.log("[v0] Chrome/Firefox - falling back to WebM:", type)
-          return type
-        }
-      }
-      
       return ""
     }
     
