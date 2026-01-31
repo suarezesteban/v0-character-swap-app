@@ -37,28 +37,17 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     }
   }, [recordedVideo])
 
-  // Upload video to Vercel Blob
-  // Server-side workflow will handle conversion to MP4 if needed via fal.ai storage
+  // Auto-upload video when recorded
   const uploadVideo = useCallback(async (blob: Blob) => {
     setIsUploading(true)
     try {
-      // Determine file extension based on blob type
-      let extension = "webm"
-      if (blob.type.includes("mp4")) {
-        extension = "mp4"
-      } else if (blob.type.includes("quicktime")) {
-        extension = "mov"
-      }
-      console.log("[v0] Uploading video - type:", blob.type, "extension:", extension, "size:", blob.size)
-      
-      const videoBlob = await upload(`videos/${Date.now()}-recording.${extension}`, blob, {
+      const videoBlob = await upload(`videos/${Date.now()}-recording.webm`, blob, {
         access: "public",
         handleUploadUrl: "/api/upload",
       })
-      console.log("[v0] Video uploaded successfully:", videoBlob.url)
       setUploadedVideoUrl(videoBlob.url)
     } catch (error) {
-      console.error("[v0] Failed to upload video:", error)
+      console.error("Failed to upload video:", error)
       // Don't fail - user can still generate, it will upload then
     } finally {
       setIsUploading(false)
@@ -79,18 +68,12 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     video.onloadedmetadata = () => {
       URL.revokeObjectURL(video.src)
       
-      // WebM from canvas.captureStream often reports Infinity or NaN duration
-      // Only reject if we have a valid duration that's clearly too long
-      const duration = video.duration
-      const hasValidDuration = isFinite(duration) && !isNaN(duration) && duration > 0
-      
-      if (hasValidDuration && duration > MAX_VIDEO_DURATION + 1) {
-        const durationSeconds = Math.round(duration)
+      // Allow up to 31 seconds to account for timing variations
+      if (video.duration > MAX_VIDEO_DURATION + 1) {
+        const durationSeconds = Math.round(video.duration)
         alert(`Video is too long (${durationSeconds}s). Please record up to ${MAX_VIDEO_DURATION} seconds.`)
         return
       }
-      
-      console.log("[v0] Video metadata loaded - duration:", duration, "hasValidDuration:", hasValidDuration)
       
       // Detect actual aspect ratio from video dimensions
       const { videoWidth, videoHeight } = video
@@ -111,13 +94,12 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       setRecordedVideo(blob)
       setRecordedAspectRatio(detectedAspectRatio)
       setShowPreview(true)
-      // Start converting and uploading immediately in background
+      // Start uploading immediately in background
       uploadVideo(blob)
     }
     
     video.onerror = () => {
       URL.revokeObjectURL(video.src)
-      console.log("[v0] Video metadata error - accepting video anyway")
       // Still accept the video if we can't validate duration
       setRecordedVideo(blob)
       setRecordedAspectRatio("fill") // Default to fill if can't detect

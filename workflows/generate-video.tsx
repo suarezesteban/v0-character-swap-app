@@ -133,23 +133,6 @@ async function submitToFal(
 
   fal.config({ credentials: process.env.FAL_KEY })
 
-  // Download video from Vercel Blob and re-upload to fal.storage
-  // This normalizes the video format and ensures fal.ai can process it
-  // fal.storage handles format conversion internally
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Downloading video from Blob: ${videoUrl}`)
-  
-  const videoFetchStart = Date.now()
-  const videoResponse = await fetch(videoUrl)
-  if (!videoResponse.ok) {
-    throw new Error(`Failed to download video: ${videoResponse.status}`)
-  }
-  const videoBlob = await videoResponse.blob()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
-
-  const falUploadStart = Date.now()
-  const finalVideoUrl = await fal.storage.upload(videoBlob)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
-
   // Build our webhook URL with both generationId and hookToken
   const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
@@ -160,13 +143,13 @@ async function submitToFal(
   const webhookUrl = `${baseUrl}/api/fal-webhook?generationId=${generationId}&hookToken=${hookToken}`
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Submitting to fal.ai with webhook: ${webhookUrl}`)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${finalVideoUrl}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${videoUrl}`)
 
   const falSubmitStart = Date.now()
   const { request_id } = await fal.queue.submit("fal-ai/kling-video/v2.6/standard/motion-control", {
     input: {
       image_url: characterImageUrl,
-      video_url: finalVideoUrl,
+      video_url: videoUrl,
       character_orientation: "video",
     },
     webhookUrl,
