@@ -101,10 +101,19 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
     drawFrame()
 
-    // Get canvas stream and add audio from original stream
-    const canvasStream = canvas.captureStream(30)
-    const audioTracks = originalStreamRef.current.getAudioTracks()
-    audioTracks.forEach(track => canvasStream.addTrack(track))
+    // Detect browser type
+    const ua = navigator.userAgent
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isSafari = /^((?!chrome|android).)*safari/i.test(ua) || isIOS
+    
+    console.log("[v0] Browser detection - Safari:", isSafari, "iOS:", isIOS)
+    
+    // IMPORTANT: Record directly from camera stream for ALL browsers
+    // canvas.captureStream() produces WebM with corrupted metadata that fal.ai rejects
+    // The preview is mirrored via CSS, but the recording will NOT be mirrored
+    // This matches behavior of TikTok, Instagram, etc.
+    const recordingStream = originalStreamRef.current
+    console.log("[v0] Recording directly from camera stream (all browsers)")
 
     chunksRef.current = []
     
@@ -115,31 +124,50 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    if (isSafari) {
-      // Safari (desktop & mobile): Use MP4 with high bitrate
-      // Safari has issues with canvas-recorded video metadata
-      mimeType = "video/mp4"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 8000000, // 8 Mbps
-      })
-      console.log("[v0] Safari detected - using MP4 with 60s timeslice")
-    } else if (isMobile) {
-      // Android mobile: Use MP4 if supported, else WebM
-      mimeType = MediaRecorder.isTypeSupported("video/mp4") 
-        ? "video/mp4" 
-        : "video/webm"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 8000000, // 8 Mbps
-      })
-    } else {
-      // Chrome/Firefox Desktop: Use WebM (works reliably with fal.ai)
-      mimeType = "video/webm;codecs=vp8,opus"
-      mediaRecorder = new MediaRecorder(canvasStream, { 
-        mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
-      })
+    // Find best supported type - ALWAYS prefer MP4 for fal.ai compatibility
+    const findSupportedType = () => {
+      // MP4 first (works directly with fal.ai), then WebM as fallback
+      const preferredOrder = [
+        "video/mp4",
+        "video/mp4;codecs=avc1",
+        "video/webm;codecs=vp8",
+        "video/webm;codecs=vp9",
+        "video/webm",
+      ]
+      
+      for (const type of preferredOrder) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          return type
+        }
+      }
+      return ""
+    }
+    
+    const selectedType = findSupportedType()
+    console.log("[v0] Selected MIME type:", selectedType || "(browser default)")
+    
+    try {
+      if (selectedType) {
+        mimeType = selectedType.split(";")[0]
+        mediaRecorder = new MediaRecorder(recordingStream, { 
+          mimeType,
+          videoBitsPerSecond: 5000000,
+        })
+      } else {
+        mediaRecorder = new MediaRecorder(recordingStream)
+        mimeType = mediaRecorder.mimeType || "video/webm"
+      }
+      console.log("[v0] MediaRecorder created with mimeType:", mediaRecorder.mimeType)
+    } catch (err) {
+      console.error("[v0] MediaRecorder creation failed:", err)
+      try {
+        mediaRecorder = new MediaRecorder(recordingStream)
+        mimeType = mediaRecorder.mimeType || "video/webm"
+      } catch (err2) {
+        console.error("[v0] MediaRecorder fallback failed:", err2)
+        alert("Unable to start recording. Please try a different browser.")
+        return
+      }
     }
 
     mediaRecorder.ondataavailable = (e) => {
@@ -160,15 +188,18 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
 
     mediaRecorderRef.current = mediaRecorder
     
-    // Safari needs a long timeslice to force proper metadata writing
-    // but not too short to avoid timestamp issues (which cause fast-forward)
-    // 60 seconds = single chunk for videos up to 30s
-    if (isSafari) {
-      mediaRecorder.start(60000) // 60 second timeslice - single chunk
-    } else if (isMobile) {
-      mediaRecorder.start(10000) // 10 seconds for Android
-    } else {
-      mediaRecorder.start() // No timeslice for Chrome/Firefox desktop
+    // Start recording
+    try {
+      if (isSafari || isIOS) {
+        mediaRecorder.start() // No timeslice for Safari
+      } else {
+        mediaRecorder.start(1000) // 1 second chunks for Chrome
+      }
+      console.log("[v0] Recording started, state:", mediaRecorder.state)
+    } catch (err) {
+      console.error("[v0] MediaRecorder.start() failed:", err)
+      alert("Failed to start recording. Please try again.")
+      return
     }
     setIsRecording(true)
     setRecordingTime(0)
