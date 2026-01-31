@@ -470,7 +470,7 @@ export function CharacterGrid({
                 rel="noopener noreferrer"
                 className="text-neutral-500 transition-colors hover:text-white"
               >
-                @EstebanSuarez
+                estebansuarez
               </a>
             </p>
             {generateError && (
