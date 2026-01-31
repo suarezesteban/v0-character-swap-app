@@ -99,17 +99,29 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    // Find best supported type
+    // Find best supported type - Try MP4 first for ALL browsers (Kling AI requires H.264)
+    // Chrome 120+ supports MP4 recording in some configurations
     const findSupportedType = () => {
-      const preferredOrder = isSafari 
-        ? ["video/mp4", "video/mp4;codecs=avc1"]
-        : ["video/webm", "video/webm;codecs=vp8", "video/webm;codecs=vp9"]
-      
-      for (const type of preferredOrder) {
+      // Try MP4 first for all browsers - this is what Kling AI needs
+      const mp4Types = ["video/mp4", "video/mp4;codecs=avc1", "video/mp4;codecs=h264"]
+      for (const type of mp4Types) {
         if (MediaRecorder.isTypeSupported(type)) {
+          console.log("[v0] MP4 supported:", type)
           return type
         }
       }
+      
+      // Fall back to WebM only if MP4 is not supported
+      if (!isSafari) {
+        const webmTypes = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+        for (const type of webmTypes) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            console.log("[v0] Falling back to WebM:", type)
+            return type
+          }
+        }
+      }
+      
       return ""
     }
     
