@@ -133,29 +133,21 @@ async function submitToFal(
 
   fal.config({ credentials: process.env.FAL_KEY })
 
-  // Use video URL directly for MP4 (Safari/Chrome with MP4 support)
-  // Only upload to fal.ai storage for WebM files (older Chrome)
-  let finalVideoUrl = videoUrl
+  // ALWAYS upload to fal.ai storage - fal.ai cannot access Vercel Blob URLs directly
+  // This works for both MP4 (Safari) and WebM (Chrome)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Uploading video to fal.ai storage from: ${videoUrl}`)
   
-  if (videoUrl.includes('.webm')) {
-    // WebM needs to be uploaded to fal.ai storage
-    console.log(`[Workflow Step] [${new Date().toISOString()}] WebM detected - uploading to fal.ai storage...`)
-    
-    const videoFetchStart = Date.now()
-    const videoResponse = await fetch(videoUrl)
-    if (!videoResponse.ok) {
-      throw new Error(`Failed to download video: ${videoResponse.status}`)
-    }
-    const videoBlob = await videoResponse.blob()
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes`)
-
-    const falUploadStart = Date.now()
-    finalVideoUrl = await fal.storage.upload(videoBlob)
-    console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
-  } else {
-    // MP4 - use Vercel Blob URL directly (works for Safari and Chrome with MP4 support)
-    console.log(`[Workflow Step] [${new Date().toISOString()}] MP4 detected - using Vercel Blob URL directly: ${videoUrl}`)
+  const videoFetchStart = Date.now()
+  const videoResponse = await fetch(videoUrl)
+  if (!videoResponse.ok) {
+    throw new Error(`Failed to download video: ${videoResponse.status}`)
   }
+  const videoBlob = await videoResponse.blob()
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
+
+  const falUploadStart = Date.now()
+  const finalVideoUrl = await fal.storage.upload(videoBlob)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
 
   // Build our webhook URL with both generationId and hookToken
   const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
