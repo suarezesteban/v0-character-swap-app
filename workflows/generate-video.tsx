@@ -166,13 +166,13 @@ async function submitToFal(
   const webhookUrl = `${baseUrl}/api/fal-webhook?generationId=${generationId}&hookToken=${hookToken}`
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Submitting to fal.ai with webhook: ${webhookUrl}`)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${finalVideoUrl}`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${videoUrl}`)
 
   const falSubmitStart = Date.now()
   const { request_id } = await fal.queue.submit("fal-ai/kling-video/v2.6/standard/motion-control", {
     input: {
       image_url: characterImageUrl,
-      video_url: finalVideoUrl,
+      video_url: videoUrl,
       character_orientation: "video",
     },
     webhookUrl,
