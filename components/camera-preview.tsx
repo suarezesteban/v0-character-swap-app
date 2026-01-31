@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useCallback, useEffect } from "react"
-import { fixWebmDuration } from "@fix-webm-duration/fix"
+import { webmFixDuration } from "webm-fix-duration"
 
 interface CameraPreviewProps {
   onVideoRecorded: (videoBlob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
@@ -235,7 +235,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       if (blobType === "video/webm") {
         try {
           console.log("[v0] Fixing WebM duration metadata...")
-          blob = await fixWebmDuration(blob, recordingDuration, { logger: false })
+          blob = await webmFixDuration(blob, recordingDuration)
           console.log("[v0] WebM duration fixed, new size:", blob.size)
         } catch (err) {
           console.error("[v0] Failed to fix WebM duration:", err)
