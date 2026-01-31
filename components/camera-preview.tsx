@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState, useCallback, useEffect } from "react"
+import { fixWebmDuration } from "@fix-webm-duration/fix"
 
 interface CameraPreviewProps {
   onVideoRecorded: (videoBlob: Blob, aspectRatio: "9:16" | "16:9" | "fill") => void
@@ -27,6 +28,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const countdownRef = useRef<NodeJS.Timeout | null>(null)
   const isStartingRef = useRef(false)
+  const recordingStartTimeRef = useRef<number>(0)
 
   const startCamera = useCallback(async () => {
     try {
@@ -206,7 +208,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       }
     }
 
-    mediaRecorder.onstop = () => {
+    mediaRecorder.onstop = async () => {
       // Stop the animation loop
       isAnimating = false
       if (animationFrameRef.current) {
@@ -216,7 +218,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       
       const blobType = mimeType.split(";")[0]
       const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
-      console.log("[v0] Recording stopped. Chunks:", chunksRef.current.length, "Size:", totalSize)
+      const recordingDuration = Date.now() - recordingStartTimeRef.current
+      console.log("[v0] Recording stopped. Chunks:", chunksRef.current.length, "Size:", totalSize, "Duration:", recordingDuration, "ms")
       
       if (chunksRef.current.length === 0 || totalSize === 0) {
         console.error("[v0] No data recorded!")
@@ -224,8 +227,22 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         return
       }
       
-      const blob = new Blob(chunksRef.current, { type: blobType })
-      console.log("[v0] Final blob size:", blob.size, "type:", blob.type)
+      let blob = new Blob(chunksRef.current, { type: blobType })
+      console.log("[v0] Initial blob size:", blob.size, "type:", blob.type)
+      
+      // Fix WebM duration metadata - Chrome MediaRecorder creates WebM without duration
+      // This causes fal.ai/Kling to reject the file as "invalid format"
+      if (blobType === "video/webm") {
+        try {
+          console.log("[v0] Fixing WebM duration metadata...")
+          blob = await fixWebmDuration(blob, recordingDuration, { logger: false })
+          console.log("[v0] WebM duration fixed, new size:", blob.size)
+        } catch (err) {
+          console.error("[v0] Failed to fix WebM duration:", err)
+          // Continue with original blob - might still work
+        }
+      }
+      
       onVideoRecorded(blob, aspectRatio)
     }
 
@@ -233,6 +250,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     
     // Start recording - use timeslice for more reliable chunk collection
     try {
+      recordingStartTimeRef.current = Date.now()
       mediaRecorder.start(1000) // 1 second chunks
       console.log("[v0] Recording started (canvas mirrored), state:", mediaRecorder.state)
     } catch (err) {
