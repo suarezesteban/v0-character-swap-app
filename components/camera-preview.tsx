@@ -12,8 +12,6 @@ interface CameraPreviewProps {
 
 export function CameraPreview({ onVideoRecorded, isProcessing, progress, progressMessage, isError }: CameraPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationFrameRef = useRef<number | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const originalStreamRef = useRef<MediaStream | null>(null)
@@ -64,12 +62,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       }
       if (timerRef.current) clearInterval(timerRef.current)
       if (countdownRef.current) clearInterval(countdownRef.current)
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current)
     }
   }, [startCamera])
 
   const beginRecording = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current || !originalStreamRef.current) return
+    if (!videoRef.current || !originalStreamRef.current) return
     
     // Clear any existing timer first
     if (timerRef.current) {
@@ -77,29 +74,11 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       timerRef.current = null
     }
 
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext("2d", { willReadFrequently: true })
-    if (!ctx) return
-
-    // Wait for video to have dimensions
-    const width = video.videoWidth || 720
-    const height = video.videoHeight || 1280
-    
-    // Set canvas size to match video
-    canvas.width = width
-    canvas.height = height
-
-    // Draw mirrored video to canvas
-    const drawFrame = () => {
-      ctx.save()
-      ctx.translate(width, 0)
-      ctx.scale(-1, 1)
-      ctx.drawImage(video, 0, 0, width, height)
-      ctx.restore()
-      animationFrameRef.current = requestAnimationFrame(drawFrame)
+    // Check if MediaRecorder is available
+    if (typeof MediaRecorder === "undefined") {
+      alert("Recording is not supported on this browser. Please use Chrome, Firefox, or Safari 14.5+")
+      return
     }
-    drawFrame()
 
     // Detect browser type
     const ua = navigator.userAgent
@@ -116,10 +95,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     console.log("[v0] Recording directly from camera stream (all browsers)")
 
     chunksRef.current = []
-    
-    // Detect browser type
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
@@ -171,18 +146,29 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
 
     mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data)
+      if (e.data.size > 0) {
+        chunksRef.current.push(e.data)
+        console.log("[v0] Chunk received, size:", e.data.size)
+      }
+    }
+
+    mediaRecorder.onerror = (e) => {
+      console.error("[v0] MediaRecorder error:", e)
     }
 
     mediaRecorder.onstop = () => {
-      // Stop canvas drawing
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
-      }
-      // Use base mimeType without codecs for the blob
       const blobType = mimeType.split(";")[0]
+      const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
+      console.log("[v0] Recording stopped. Chunks:", chunksRef.current.length, "Size:", totalSize)
+      
+      if (chunksRef.current.length === 0 || totalSize === 0) {
+        console.error("[v0] No data recorded!")
+        alert("Recording failed - no data captured. Please try again.")
+        return
+      }
+      
       const blob = new Blob(chunksRef.current, { type: blobType })
+      console.log("[v0] Final blob size:", blob.size, "type:", blob.type)
       onVideoRecorded(blob, aspectRatio)
     }
 
@@ -201,14 +187,13 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       alert("Failed to start recording. Please try again.")
       return
     }
+    
     setIsRecording(true)
     setRecordingTime(0)
 
     timerRef.current = setInterval(() => {
       setRecordingTime((prev) => {
-        // Stop at 29 seconds to ensure final video is ~30s max (MediaRecorder adds slight delay)
         if (prev >= 29) {
-          // Stop recording
           if (mediaRecorderRef.current?.state === "recording") {
             mediaRecorderRef.current.stop()
           }
@@ -217,7 +202,7 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
             clearInterval(timerRef.current)
             timerRef.current = null
           }
-          return 30 // Display as 30 for user
+          return 30
         }
         return prev + 1
       })
@@ -274,10 +259,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop()
     }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
-    }
     setIsRecording(false)
     if (timerRef.current) {
       clearInterval(timerRef.current)
@@ -306,8 +287,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
           className="h-full w-full object-contain md:object-cover"
           style={{ transform: "scaleX(-1)" }}
         />
-        {/* Hidden canvas for mirrored recording */}
-        <canvas ref={canvasRef} className="hidden" />
         
         {/* Flash effect */}
         {showFlash && (
