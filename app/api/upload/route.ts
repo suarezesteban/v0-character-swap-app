@@ -10,11 +10,17 @@ export async function POST(request: NextRequest) {
       request,
       onBeforeGenerateToken: async () => {
         // Allow video and image uploads
+        // Include various video formats for cross-browser compatibility
         return {
           allowedContentTypes: [
             "video/webm",
             "video/mp4",
             "video/quicktime",
+            "video/x-m4v",
+            "video/mpeg",
+            "video/3gpp",
+            "video/3gpp2",
+            "application/octet-stream", // Fallback for unknown video types
             "image/jpeg",
             "image/png",
             "image/webp",
