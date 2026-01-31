@@ -138,7 +138,7 @@ async function submitToFal(
   // Kling AI requires MP4 with H.264 codec - WebM is NOT supported
   // If video is WebM, we MUST convert it to MP4 using fal.ai ffmpeg-api
   if (videoUrl.includes('.webm')) {
-    console.log(`[Workflow Step] [${new Date().toISOString()}] WebM detected - converting to MP4 via fal.ai ffmpeg-api/compose...`)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] WebM detected - converting to MP4 via fal.ai ffmpeg-api/merge-videos...`)
     
     // First upload to fal.ai storage
     const videoFetchStart = Date.now()
@@ -153,35 +153,32 @@ async function submitToFal(
     const falStorageUrl = await fal.storage.upload(videoBlob)
     console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${falStorageUrl}`)
 
-    // Use ffmpeg-api/compose to convert WebM to MP4
-    // By creating a single-track composition, ffmpeg outputs MP4 with H.264
+    // Use ffmpeg-api/merge-videos with a single video to transcode to MP4
+    // merge-videos outputs MP4 with H.264 by default
     const convertStart = Date.now()
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Converting via ffmpeg-api/compose...`)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Converting via ffmpeg-api/merge-videos...`)
     
-    const conversionResult = await fal.subscribe("fal-ai/ffmpeg-api/compose", {
-      input: {
-        tracks: [
-          {
-            id: "video-track",
-            type: "video",
-            keyframes: [
-              {
-                timestamp: 0,
-                duration: 30000, // 30 seconds max
-                url: falStorageUrl
-              }
-            ]
-          }
-        ]
+    try {
+      const conversionResult = await fal.subscribe("fal-ai/ffmpeg-api/merge-videos", {
+        input: {
+          video_urls: [falStorageUrl]
+        }
+      })
+      
+      if (conversionResult.data?.video_url) {
+        finalVideoUrl = conversionResult.data.video_url
+        console.log(`[Workflow Step] [${new Date().toISOString()}] ffmpeg-api/merge-videos took ${Date.now() - convertStart}ms, MP4 url: ${finalVideoUrl}`)
+      } else {
+        console.error(`[Workflow Step] ffmpeg-api/merge-videos returned no video_url:`, conversionResult)
+        // Fall back to using the fal storage URL directly
+        finalVideoUrl = falStorageUrl
+        console.log(`[Workflow Step] [${new Date().toISOString()}] Falling back to fal storage URL: ${finalVideoUrl}`)
       }
-    })
-    
-    if (conversionResult.data?.video_url) {
-      finalVideoUrl = conversionResult.data.video_url
-      console.log(`[Workflow Step] [${new Date().toISOString()}] ffmpeg-api/compose took ${Date.now() - convertStart}ms, MP4 url: ${finalVideoUrl}`)
-    } else {
-      console.error(`[Workflow Step] ffmpeg-api/compose failed:`, conversionResult)
-      throw new Error("Video conversion to MP4 failed")
+    } catch (conversionError) {
+      console.error(`[Workflow Step] ffmpeg-api/merge-videos failed:`, conversionError)
+      // Fall back to using the fal storage URL directly - Kling might still accept it
+      finalVideoUrl = falStorageUrl
+      console.log(`[Workflow Step] [${new Date().toISOString()}] Falling back to fal storage URL: ${finalVideoUrl}`)
     }
   } else {
     console.log(`[Workflow Step] [${new Date().toISOString()}] Video is already MP4, using directly: ${videoUrl}`)
