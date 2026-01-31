@@ -90,13 +90,15 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    // Find best supported type - let browser choose the best codec
+    // Find best supported type - prioritize VP8 for better compatibility with fal.ai
+    // VP9 can cause issues with some video processing pipelines
     const findSupportedType = () => {
       const preferredOrder = [
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-        "video/mp4",
+        "video/webm;codecs=vp8,opus",   // VP8 is more compatible with processing pipelines
+        "video/webm;codecs=vp8",        // VP8 without audio codec spec
+        "video/webm;codecs=vp9,opus",   // VP9 as fallback
+        "video/webm",                    // Generic WebM
+        "video/mp4",                     // MP4 fallback (Safari)
       ]
       
       for (const type of preferredOrder) {
