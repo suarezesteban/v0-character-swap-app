@@ -128,7 +128,7 @@ async function submitToFal(
   console.log(`[Workflow Step] [${new Date().toISOString()}] submitToFal starting...`)
 
   const { fal } = await import("@fal-ai/client")
-  const { updateGenerationRunId } = await import("@/lib/db")
+  const { updateGenerationRunId, updateGenerationFailed } = await import("@/lib/db")
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
 
   fal.config({ credentials: process.env.FAL_KEY })
@@ -137,17 +137,35 @@ async function submitToFal(
   // This fixes Safari MP4 metadata issues and handles Chrome WebM conversion
   console.log(`[Workflow Step] [${new Date().toISOString()}] Uploading video to fal.storage for normalization: ${videoUrl}`)
   
-  const videoFetchStart = Date.now()
-  const videoResponse = await fetch(videoUrl)
-  if (!videoResponse.ok) {
-    throw new Error(`Failed to download video: ${videoResponse.status}`)
-  }
-  const videoBlob = await videoResponse.blob()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
+  let finalVideoUrl: string
+  
+  try {
+    const videoFetchStart = Date.now()
+    const videoResponse = await fetch(videoUrl)
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`)
+    }
+    const videoBlob = await videoResponse.blob()
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
+    
+    // Validate blob has content
+    if (videoBlob.size === 0) {
+      throw new Error("Downloaded video blob is empty (0 bytes)")
+    }
 
-  const falUploadStart = Date.now()
-  const finalVideoUrl = await fal.storage.upload(videoBlob)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
+    const falUploadStart = Date.now()
+    finalVideoUrl = await fal.storage.upload(videoBlob)
+    console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
+    
+    if (!finalVideoUrl) {
+      throw new Error("fal.storage.upload returned empty URL")
+    }
+  } catch (uploadError) {
+    console.error(`[Workflow Step] [${new Date().toISOString()}] Video upload failed:`, uploadError)
+    // Mark generation as failed immediately
+    await updateGenerationFailed(generationId, `Video upload failed: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`)
+    throw uploadError
+  }
 
   // Build our webhook URL with both generationId and hookToken
   const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL

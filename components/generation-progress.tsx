@@ -12,6 +12,8 @@ interface GenerationProgressProps {
 
 // Estimated time in seconds (~5:30 based on real usage data)
 const ESTIMATED_DURATION = 5.5 * 60
+// Max display time - after this, something might be wrong
+const MAX_DISPLAY_TIME = 10 * 60
 
 export function GenerationProgress({ 
   characterImageUrl, 
@@ -55,7 +57,8 @@ export function GenerationProgress({
     if (elapsedSeconds < 180) return "Processing frames..."
     if (elapsedSeconds < 270) return "Generating video..."
     if (elapsedSeconds < 330) return "Rendering final..."
-    return "Almost done..."
+    if (elapsedSeconds < MAX_DISPLAY_TIME) return "Almost done..."
+    return "Taking longer than usual..."
   }
 
   return (
