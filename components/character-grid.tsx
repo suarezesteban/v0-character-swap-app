@@ -2,34 +2,10 @@
 
 import React, { useRef, useState, useEffect } from "react"
 import Image from "next/image"
-import { cn } from "@/lib/utils"
+import { cn, detectImageAspectRatio } from "@/lib/utils"
 import { upload } from "@vercel/blob/client"
 import type { Character } from "@/lib/types"
 import { defaultCharacters } from "@/lib/constants"
-
-// Helper to detect aspect ratio from image URL
-function detectImageAspectRatio(src: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new window.Image()
-    img.crossOrigin = "anonymous"
-    img.onload = () => {
-      const ratio = img.width / img.height
-      if (ratio < 0.65) {
-        resolve("9:16")
-      } else if (ratio >= 0.65 && ratio < 0.85) {
-        resolve("3:4")
-      } else if (ratio >= 0.85 && ratio < 1.15) {
-        resolve("1:1")
-      } else if (ratio >= 1.15 && ratio < 1.5) {
-        resolve("4:3")
-      } else {
-        resolve("16:9")
-      }
-    }
-    img.onerror = () => resolve("1:1")
-    img.src = src
-  })
-}
 
 // Re-export for backwards compatibility
 export { defaultCharacters }

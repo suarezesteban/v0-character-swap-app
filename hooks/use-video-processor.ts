@@ -108,15 +108,13 @@ export function useVideoProcessor(): UseVideoProcessorReturn {
 
       // Create blob from output
       const outputBlob = new Blob([outputData], { type: "video/mp4" })
-      
-      console.log("[v0] Video processed - input:", inputBlob.size, "bytes, output:", outputBlob.size, "bytes")
 
       setProgress({ stage: "done", percent: 100, message: "Done!" })
       setIsProcessing(false)
 
       return outputBlob
     } catch (error) {
-      console.error("[v0] Video processing error:", error)
+      console.error("Video processing error:", error)
       setProgress({ 
         stage: "error", 
         percent: 0, 
@@ -125,7 +123,6 @@ export function useVideoProcessor(): UseVideoProcessorReturn {
       setIsProcessing(false)
       
       // Return original blob if processing fails - let fal.ai try to handle it
-      console.log("[v0] Returning original blob due to processing error")
       return inputBlob
     }
   }, [])

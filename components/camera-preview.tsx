@@ -85,15 +85,12 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     const isSafari = /^((?!chrome|android).)*safari/i.test(ua) || isIOS
     
-    console.log("[v0] Browser detection - Safari:", isSafari, "iOS:", isIOS)
-    
     // For Safari/iOS: Use canvas.captureStream() to produce WebM instead of MP4
     // Safari's native MP4 recording has metadata issues that fal.ai rejects
     // For Chrome: Record directly from camera stream
     let recordingStream: MediaStream
     
     if (isSafari || isIOS) {
-      console.log("[v0] Safari detected - using canvas capture for WebM output")
       // Create a canvas to capture and re-encode as WebM
       const video = videoRef.current
       const canvas = document.createElement("canvas")
@@ -125,7 +122,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     } else {
       // Chrome and others: record directly from camera
       recordingStream = originalStreamRef.current
-      console.log("[v0] Recording directly from camera stream (Chrome)")
     }
 
     chunksRef.current = []
@@ -155,7 +151,6 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     }
     
     const selectedType = findSupportedType()
-    console.log("[v0] Selected MIME type:", selectedType || "(browser default)")
     
     try {
       if (selectedType) {
@@ -168,14 +163,13 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
         mediaRecorder = new MediaRecorder(recordingStream)
         mimeType = mediaRecorder.mimeType || "video/webm"
       }
-      console.log("[v0] MediaRecorder created with mimeType:", mediaRecorder.mimeType)
     } catch (err) {
-      console.error("[v0] MediaRecorder creation failed:", err)
+      console.error("MediaRecorder creation failed:", err)
       try {
         mediaRecorder = new MediaRecorder(recordingStream)
         mimeType = mediaRecorder.mimeType || "video/webm"
       } catch (err2) {
-        console.error("[v0] MediaRecorder fallback failed:", err2)
+        console.error("MediaRecorder fallback failed:", err2)
         alert("Unable to start recording. Please try a different browser.")
         return
       }
@@ -184,27 +178,24 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     mediaRecorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         chunksRef.current.push(e.data)
-        console.log("[v0] Chunk received, size:", e.data.size)
       }
     }
 
     mediaRecorder.onerror = (e) => {
-      console.error("[v0] MediaRecorder error:", e)
+      console.error("MediaRecorder error:", e)
     }
 
     mediaRecorder.onstop = () => {
       const blobType = mimeType.split(";")[0]
       const totalSize = chunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0)
-      console.log("[v0] Recording stopped. Chunks:", chunksRef.current.length, "Size:", totalSize)
       
       if (chunksRef.current.length === 0 || totalSize === 0) {
-        console.error("[v0] No data recorded!")
+        console.error("No data recorded!")
         alert("Recording failed - no data captured. Please try again.")
         return
       }
       
       const blob = new Blob(chunksRef.current, { type: blobType })
-      console.log("[v0] Final blob size:", blob.size, "type:", blob.type)
       onVideoRecorded(blob, aspectRatio)
     }
 
@@ -217,9 +208,8 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
       } else {
         mediaRecorder.start(1000) // 1 second chunks for Chrome
       }
-      console.log("[v0] Recording started, state:", mediaRecorder.state)
     } catch (err) {
-      console.error("[v0] MediaRecorder.start() failed:", err)
+      console.error("MediaRecorder.start() failed:", err)
       alert("Failed to start recording. Please try again.")
       return
     }

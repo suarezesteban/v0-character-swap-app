@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { upload } from "@vercel/blob/client"
 import { MAX_VIDEO_SIZE, MAX_VIDEO_DURATION, STORAGE_KEYS } from "@/lib/constants"
+import { detectVideoAspectRatio } from "@/lib/utils"
 import { useVideoProcessor } from "./use-video-processor"
 
 interface UseVideoRecordingReturn {
@@ -49,7 +50,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
   const uploadVideo = useCallback(async (blob: Blob) => {
     // Prevent duplicate processing
     if (processingRef.current) {
-      console.log("[v0] Already processing, skipping duplicate call")
       return
     }
     processingRef.current = true
@@ -57,21 +57,16 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     setIsUploading(true)
     try {
       // Process video with ffmpeg.wasm to fix metadata and ensure compatibility
-      console.log("[v0] Processing video with ffmpeg.wasm - input type:", blob.type, "size:", blob.size)
       const processedBlob = await processVideo(blob)
-      console.log("[v0] Video processed - output type:", processedBlob.type, "size:", processedBlob.size)
       
       // Upload the processed MP4 to Vercel Blob
-      console.log("[v0] Uploading processed video to Vercel Blob")
-      
       const videoBlob = await upload(`videos/${Date.now()}-recording.mp4`, processedBlob, {
         access: "public",
         handleUploadUrl: "/api/upload",
       })
-      console.log("[v0] Video uploaded successfully:", videoBlob.url)
       setUploadedVideoUrl(videoBlob.url)
     } catch (error) {
-      console.error("[v0] Failed to process/upload video:", error)
+      console.error("Failed to process/upload video:", error)
       // Don't fail - user can still generate, it will upload then
     } finally {
       setIsUploading(false)
@@ -104,28 +99,9 @@ export function useVideoRecording(): UseVideoRecordingReturn {
         return
       }
       
-      console.log("[v0] Video metadata loaded - duration:", duration, "hasValidDuration:", hasValidDuration)
-      
       // Detect actual aspect ratio from video dimensions
       const { videoWidth, videoHeight } = video
-      const ratio = videoWidth / videoHeight
-      let detectedAspectRatio: "9:16" | "16:9" | "fill" = "fill"
-      
-      console.log("[v0] Video dimensions:", videoWidth, "x", videoHeight, "ratio:", ratio.toFixed(3))
-      
-      if (ratio < 0.7) {
-        // Portrait (9:16 is ~0.5625)
-        detectedAspectRatio = "9:16"
-        console.log("[v0] Detected aspect ratio: 9:16 (portrait)")
-      } else if (ratio > 1.4) {
-        // Landscape (16:9 is ~1.777)
-        detectedAspectRatio = "16:9"
-        console.log("[v0] Detected aspect ratio: 16:9 (landscape)")
-      } else {
-        // Square-ish or other - treat as fill
-        detectedAspectRatio = "fill"
-        console.log("[v0] Detected aspect ratio: fill (square-ish)")
-      }
+      const detectedAspectRatio = detectVideoAspectRatio(videoWidth, videoHeight)
       
       setRecordedVideo(blob)
       setRecordedAspectRatio(detectedAspectRatio)
@@ -136,7 +112,6 @@ export function useVideoRecording(): UseVideoRecordingReturn {
     
     video.onerror = () => {
       URL.revokeObjectURL(video.src)
-      console.log("[v0] Video metadata error - accepting video anyway")
       // Still accept the video if we can't validate duration
       setRecordedVideo(blob)
       setRecordedAspectRatio("fill") // Default to fill if can't detect
