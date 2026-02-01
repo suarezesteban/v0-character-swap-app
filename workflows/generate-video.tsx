@@ -148,25 +148,48 @@ async function submitToFal(
 
   fal.config({ credentials: process.env.FAL_KEY })
 
-  // Always upload to fal.storage for format normalization
-  // This fixes Safari MP4 metadata issues and handles Chrome WebM conversion
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Uploading video to fal.storage for normalization: ${videoUrl}`)
+  // Transcode video using our ffmpeg endpoint to fix Safari MP4 metadata issues
+  // This ensures proper moov atom placement and compatible codecs for fal.ai
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Transcoding video: ${videoUrl}`)
   
   let finalVideoUrl: string
   
   try {
+    // Build base URL for our transcode endpoint
+    const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000"
+    
+    const transcodeStart = Date.now()
+    const transcodeResponse = await fetch(`${baseUrl}/api/transcode`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoUrl }),
+    })
+    
+    if (!transcodeResponse.ok) {
+      const errorText = await transcodeResponse.text()
+      throw new Error(`Transcode failed: ${transcodeResponse.status} - ${errorText}`)
+    }
+    
+    const { transcodedUrl, error: transcodeError } = await transcodeResponse.json()
+    
+    if (transcodeError || !transcodedUrl) {
+      throw new Error(transcodeError || "Transcode returned no URL")
+    }
+    
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Transcoded in ${Date.now() - transcodeStart}ms: ${transcodedUrl}`)
+    
+    // Now upload the transcoded video to fal.storage
     const videoFetchStart = Date.now()
-    const videoResponse = await fetch(videoUrl)
+    const videoResponse = await fetch(transcodedUrl)
     if (!videoResponse.ok) {
-      throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`)
+      throw new Error(`Failed to download transcoded video: ${videoResponse.status}`)
     }
     const videoBlob = await videoResponse.blob()
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
-    
-    // Validate blob has content
-    if (videoBlob.size === 0) {
-      throw new Error("Downloaded video blob is empty (0 bytes)")
-    }
+    console.log(`[Workflow Step] [${new Date().toISOString()}] Transcoded video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes`)
 
     const falUploadStart = Date.now()
     finalVideoUrl = await fal.storage.upload(videoBlob)
@@ -176,9 +199,8 @@ async function submitToFal(
       throw new Error("fal.storage.upload returned empty URL")
     }
   } catch (uploadError) {
-    console.error(`[Workflow Step] [${new Date().toISOString()}] Video upload failed:`, uploadError)
-    // Mark generation as failed immediately
-    await updateGenerationFailed(generationId, `Video upload failed: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`)
+    console.error(`[Workflow Step] [${new Date().toISOString()}] Video processing failed:`, uploadError)
+    await updateGenerationFailed(generationId, `Video processing failed: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`)
     throw uploadError
   }
 
