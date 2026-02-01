@@ -227,7 +227,7 @@ export default function Home() {
       {/* Camera/Video Section */}
       <div className={`flex flex-1 items-center justify-center ${isMobile ? "p-0" : (resultUrl || recordedVideoUrl) ? (generatedVideoAspectRatio === "fill" ? "p-0" : "p-1") : "p-0"}`}>
         {resultUrl ? (
-          <div className="relative flex h-full w-full items-center justify-center">
+          <div className="relative flex h-full w-full flex-col items-center justify-center md:flex-row">
             <div className={`relative overflow-hidden bg-neutral-900 ${
               generatedVideoAspectRatio === "9:16"
                 ? "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-lg"
@@ -278,9 +278,9 @@ export default function Home() {
                   }
                 }}
               />
-              {/* PiP container - always bottom right */}
+              {/* PiP container - positioned to avoid video controls */}
               {(sourceVideoUrl || recordedVideoUrl) && (
-                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 md:bottom-20">
+                <div className="absolute bottom-20 right-4 flex flex-col items-end gap-2 md:bottom-20">
                   {/* PiP toggle button */}
                   <button
                     onClick={() => setShowPip(!showPip)}
@@ -570,18 +570,17 @@ export default function Home() {
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
                 onGenerate={handleProcess}
-
               >
                 <GenerationsPanel
-                onSelectVideo={(url, sourceUrl, aspectRatio) => {
-                  setSelectedGeneratedVideo(url)
-                  setResultUrl(url)
-                  setSourceVideoUrl(sourceUrl)
-                  setCurrentAspectRatio(aspectRatio)
-                }}
-                className="mt-4"
-              />
-            </CharacterGrid>
+                  onSelectVideo={(url, sourceUrl, aspectRatio) => {
+                    setSelectedGeneratedVideo(url)
+                    setResultUrl(url)
+                    setSourceVideoUrl(sourceUrl)
+                    setCurrentAspectRatio(aspectRatio)
+                  }}
+                  className="mt-4"
+                />
+              </CharacterGrid>
           </div>
         </div>
       )}
