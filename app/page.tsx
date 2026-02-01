@@ -44,6 +44,8 @@ export default function Home() {
 
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null)
+  // Aspect ratio of the source/PiP video (from DB when viewing generation, or from recording)
+  const [sourceVideoAspectRatio, setSourceVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<string | null>(null)
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
@@ -281,9 +283,10 @@ export default function Home() {
               {/* PiP video overlay - positioned at bottom right */}
               {(sourceVideoUrl || recordedVideoUrl) && showPip && (
                 <div className={`absolute bottom-4 right-4 overflow-hidden rounded-lg border-2 border-white/20 shadow-lg md:bottom-20 ${
-                  recordedAspectRatio === "9:16" 
+                  // Use sourceVideoAspectRatio from DB when viewing a generation, otherwise use recordedAspectRatio
+                  (sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio) === "9:16" 
                     ? "aspect-[9/16] h-28 md:h-40" 
-                    : recordedAspectRatio === "16:9"
+                    : (sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio) === "16:9"
                       ? "aspect-video w-28 md:w-48"
                       : "aspect-video w-28 md:w-48"
                 }`}>
@@ -314,7 +317,7 @@ export default function Home() {
                           pipVideoUrl: pipSource,
                           pipPosition: "bottom-right",
                           pipScale: 0.25,
-                          pipAspectRatio: recordedAspectRatio,
+                          pipAspectRatio: sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio,
                           addWatermark: true,
                           onProgress: setDownloadProgress,
                         })
@@ -417,7 +420,7 @@ export default function Home() {
                         pipVideoUrl: pipSource,
                         pipPosition: "bottom-right",
                         pipScale: 0.25,
-                        pipAspectRatio: recordedAspectRatio,
+                        pipAspectRatio: sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio,
                         addWatermark: true,
                         onProgress: setDownloadProgress,
                       })
@@ -597,6 +600,7 @@ export default function Home() {
                     setSelectedGeneratedVideo(url)
                     setResultUrl(url)
                     setSourceVideoUrl(sourceUrl)
+                    setSourceVideoAspectRatio(aspectRatio)
                     setCurrentAspectRatio(aspectRatio)
                   }}
                   className="mt-4"
@@ -663,10 +667,11 @@ export default function Home() {
 
               >
                 <GenerationsPanel
-                  onSelectVideo={(url, sourceUrl) => {
+                  onSelectVideo={(url, sourceUrl, aspectRatio) => {
                     setSelectedGeneratedVideo(url)
                     setResultUrl(url)
                     setSourceVideoUrl(sourceUrl)
+                    setSourceVideoAspectRatio(aspectRatio)
                     setBottomSheetExpanded(false)
                   }}
                   className="mt-4"
