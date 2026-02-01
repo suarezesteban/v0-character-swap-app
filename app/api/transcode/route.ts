@@ -1,8 +1,9 @@
-import { put, head } from "@vercel/blob"
+import { put } from "@vercel/blob"
 import { NextRequest, NextResponse } from "next/server"
+import { fal } from "@fal-ai/client"
 
-// This endpoint downloads a video from Vercel Blob, transcodes it using ffmpeg,
-// and uploads the fixed version back to Blob. This fixes Safari MP4 metadata issues.
+// This endpoint uses fal.ai's ffmpeg API to transcode videos
+// This fixes Safari MP4 metadata issues by re-encoding with proper moov atom placement
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -14,90 +15,71 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "videoUrl is required" }, { status: 400 })
     }
 
-    console.log(`[Transcode] Starting transcode for: ${videoUrl}`)
+    console.log(`[Transcode] Starting cloud transcode for: ${videoUrl}`)
 
-    // Download the original video
-    const fetchStart = Date.now()
-    const response = await fetch(videoUrl)
-    if (!response.ok) {
-      throw new Error(`Failed to download video: ${response.status}`)
+    // Configure fal client
+    fal.config({ credentials: process.env.FAL_KEY })
+
+    // First, upload the video to fal.storage so fal can access it
+    const uploadStart = Date.now()
+    const videoResponse = await fetch(videoUrl)
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.status}`)
     }
-    const originalBuffer = await response.arrayBuffer()
-    console.log(`[Transcode] Downloaded original video in ${Date.now() - fetchStart}ms, size: ${originalBuffer.byteLength} bytes`)
-
-    // Import ffmpeg
-    const ffmpegStart = Date.now()
-    const { FFmpeg } = await import("@ffmpeg/ffmpeg")
-    const { toBlobURL, fetchFile } = await import("@ffmpeg/util")
+    const videoBlob = await videoResponse.blob()
+    console.log(`[Transcode] Downloaded video in ${Date.now() - uploadStart}ms, size: ${videoBlob.size} bytes`)
     
-    const ffmpeg = new FFmpeg()
-    
-    // Load ffmpeg with CORS-enabled URLs
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm"
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-    })
-    console.log(`[Transcode] FFmpeg loaded in ${Date.now() - ffmpegStart}ms`)
+    const falVideoUrl = await fal.storage.upload(videoBlob)
+    console.log(`[Transcode] Uploaded to fal.storage: ${falVideoUrl}`)
 
-    // Determine input format from URL
-    const isWebM = videoUrl.includes(".webm")
-    const inputExt = isWebM ? "webm" : "mp4"
-    const inputFile = `input.${inputExt}`
-    const outputFile = "output.mp4"
-
-    // Write input file to ffmpeg virtual filesystem
-    const writeStart = Date.now()
-    await ffmpeg.writeFile(inputFile, new Uint8Array(originalBuffer))
-    console.log(`[Transcode] Wrote input file in ${Date.now() - writeStart}ms`)
-
-    // Transcode to MP4 with proper metadata
-    // -movflags +faststart: Moves moov atom to beginning for streaming
-    // -c:v libx264: H.264 codec (widely compatible)
-    // -preset ultrafast: Fastest encoding
-    // -crf 23: Good quality balance
+    // Use fal.ai's ffmpeg API to transcode
+    // -movflags +faststart: Moves moov atom to beginning for streaming compatibility
+    // -c:v libx264: H.264 codec (universal compatibility)
     // -c:a aac: AAC audio codec
     const transcodeStart = Date.now()
-    await ffmpeg.exec([
-      "-i", inputFile,
-      "-c:v", "libx264",
-      "-preset", "ultrafast",
-      "-crf", "23",
-      "-c:a", "aac",
-      "-b:a", "128k",
-      "-movflags", "+faststart",
-      "-y",
-      outputFile
-    ])
-    console.log(`[Transcode] Transcoded in ${Date.now() - transcodeStart}ms`)
+    const result = await fal.subscribe("fal-ai/ffmpeg-api", {
+      input: {
+        input_file: falVideoUrl,
+        arguments: "-c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart",
+      },
+    })
+    
+    console.log(`[Transcode] fal.ai ffmpeg completed in ${Date.now() - transcodeStart}ms`)
+    console.log(`[Transcode] Result:`, JSON.stringify(result, null, 2))
 
-    // Read the transcoded file
-    const readStart = Date.now()
-    const data = await ffmpeg.readFile(outputFile)
-    const transcodedBuffer = (data as Uint8Array).buffer
-    console.log(`[Transcode] Read output file in ${Date.now() - readStart}ms, size: ${transcodedBuffer.byteLength} bytes`)
+    // Get the output URL from fal result
+    const outputUrl = (result.data as any)?.output_file?.url
+    
+    if (!outputUrl) {
+      throw new Error("fal.ai ffmpeg did not return output URL")
+    }
 
-    // Upload transcoded video to Blob
-    const uploadStart = Date.now()
+    // Download the transcoded video and upload to our Blob storage
+    const blobUploadStart = Date.now()
+    const transcodedResponse = await fetch(outputUrl)
+    if (!transcodedResponse.ok) {
+      throw new Error(`Failed to download transcoded video: ${transcodedResponse.status}`)
+    }
+    const transcodedBlob = await transcodedResponse.blob()
+    
     const timestamp = Date.now()
     const { url: transcodedUrl } = await put(
       `transcoded/video-${timestamp}.mp4`,
-      new Blob([transcodedBuffer], { type: "video/mp4" }),
+      transcodedBlob,
       {
         access: "public",
         contentType: "video/mp4",
       }
     )
-    console.log(`[Transcode] Uploaded to Blob in ${Date.now() - uploadStart}ms`)
+    console.log(`[Transcode] Uploaded to Blob in ${Date.now() - blobUploadStart}ms: ${transcodedUrl}`)
 
-    console.log(`[Transcode] Complete in ${Date.now() - startTime}ms: ${transcodedUrl}`)
+    console.log(`[Transcode] Complete in ${Date.now() - startTime}ms`)
 
     return NextResponse.json({ 
       success: true, 
       transcodedUrl,
       timing: {
         total: Date.now() - startTime,
-        download: fetchStart ? Date.now() - fetchStart : 0,
       }
     })
   } catch (error) {
