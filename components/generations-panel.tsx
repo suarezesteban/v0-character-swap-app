@@ -197,9 +197,11 @@ export function GenerationsPanel({ onSelectVideo, className = "", variant = "def
     )
   }
 
-  // Only show completed videos in compact mode
+  // Filter generations based on variant
+  // Compact: show completed and processing videos (not cancelled/failed)
+  // Default: show all except cancelled
   const displayGenerations = variant === "compact" 
-    ? generations.filter(g => g.status === "completed" && g.video_url)
+    ? generations.filter(g => (g.status === "completed" && g.video_url) || g.status === "processing" || g.status === "pending")
     : generations.filter(g => g.status !== "cancelled")
 
   if (variant === "compact" && displayGenerations.length === 0) {
@@ -247,7 +249,7 @@ export function GenerationsPanel({ onSelectVideo, className = "", variant = "def
             {/* Thumbnail or status indicator */}
             {gen.status === "completed" && gen.video_url ? (
               <button
-                onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.aspect_ratio || "fill")}
+                onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.source_video_aspect_ratio || "fill")}
                 className="relative h-full w-full overflow-hidden rounded-lg"
               >
                 <video

@@ -147,11 +147,11 @@ export default function Home() {
     if (!recordedVideo || !selectedCharacter) return
     const character = allCharacters.find(c => c.id === selectedCharacter)
     if (character) {
-      // Use character image aspect ratio, not recorded video aspect ratio
+      // Use character image aspect ratio for generated video, but also pass recorded video aspect ratio
       const characterAspectRatio = await getCharacterAspectRatio(character.src)
-      processVideo(recordedVideo, character, false, uploadedVideoUrl, characterAspectRatio)
+      processVideo(recordedVideo, character, false, uploadedVideoUrl, characterAspectRatio, recordedAspectRatio)
     }
-  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl])
+  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio])
 
   const handleReset = useCallback(() => {
     clearRecording()

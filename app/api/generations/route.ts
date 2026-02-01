@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { characterName, characterImageUrl, aspectRatio } = await request.json()
+    const { characterName, characterImageUrl, aspectRatio, sourceVideoAspectRatio } = await request.json()
 
     const generationId = await createPendingGeneration({
       userId: session.user.id,
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       characterName,
       characterImageUrl,
       aspectRatio: aspectRatio || "fill",
+      sourceVideoAspectRatio: sourceVideoAspectRatio || "fill",
     })
 
     return NextResponse.json({ generationId })
