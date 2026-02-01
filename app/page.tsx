@@ -305,6 +305,7 @@ export default function Home() {
                           ? "aspect-video w-32 md:w-48"
                           : "aspect-video w-32 md:w-48"
                     }`}>
+                      {console.log("[v0] PiP rendering with aspectRatio:", recordedAspectRatio)}
                       <video
                         ref={pipVideoRef}
                         src={sourceVideoUrl || recordedVideoUrl || ""}
@@ -442,28 +443,22 @@ export default function Home() {
               </button>
               {/* Processing overlay */}
               {(isProcessingVideo || isUploading) && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm">
-                  <div className="flex w-full max-w-[240px] flex-col items-center gap-4 px-6">
-                    <svg className="h-8 w-8 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p className="text-center font-sans text-[15px] font-medium text-white">
-                      {processingProgress?.message || (isUploading ? "Uploading..." : "Processing video...")}
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+                  <div className="flex w-full max-w-[280px] flex-col items-center gap-4 px-6">
+                    <p className="font-sans text-[15px] font-medium tracking-wide text-white">
+                      {isUploading ? "Uploading" : "Processing video"}
                     </p>
-                    {processingProgress && (
-                      <>
-                        <div className="h-1 w-full overflow-hidden rounded-full bg-neutral-800">
-                          <div
-                            className="h-full rounded-full bg-white transition-all duration-300 ease-out"
-                            style={{ width: `${processingProgress.percent}%` }}
-                          />
-                        </div>
-                        <p className="font-mono text-[13px] tabular-nums text-neutral-400">
-                          {processingProgress.percent}%
-                        </p>
-                      </>
-                    )}
+                    <div className="flex w-full flex-col items-center gap-2">
+                      <div className="h-[2px] w-full overflow-hidden rounded-full bg-white/20">
+                        <div
+                          className="h-full rounded-full bg-white transition-all duration-300 ease-out"
+                          style={{ width: `${processingProgress?.percent || 0}%` }}
+                        />
+                      </div>
+                      <p className="font-mono text-[13px] tabular-nums text-white/60">
+                        {processingProgress?.percent || 0}%
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
