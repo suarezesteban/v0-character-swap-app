@@ -46,8 +46,10 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
   console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId}`)
 
   // Create a hook with deterministic token so fal-webhook can resume it
+  // Timeout after 8 minutes - if fal.ai doesn't respond by then, something is wrong
   const hook = createHook<FalWebhookResult>({
     token: `fal-generation-${generationId}`,
+    timeout: 8 * 60 * 1000, // 8 minutes in milliseconds
   })
 
   console.log(`[Workflow] [${new Date().toISOString()}] Created hook with token: fal-generation-${generationId} (+${Date.now() - workflowStartTime}ms)`)
@@ -59,9 +61,22 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
   console.log(`[Workflow] [${new Date().toISOString()}] Submitted to fal.ai (request_id: ${requestId}), submitToFal took ${Date.now() - submitStartTime}ms, waiting for webhook...`)
 
   // SUSPEND HERE - workflow sleeps with ZERO resource consumption
-  // until /api/fal-webhook calls resumeHook()
+  // until /api/fal-webhook calls resumeHook() or timeout is reached
   const hookWaitStartTime = Date.now()
-  const falResult = await hook
+  let falResult: FalWebhookResult
+  
+  try {
+    falResult = await hook
+  } catch (hookError) {
+    // Hook timed out or failed
+    console.error(`[Workflow] [${new Date().toISOString()}] Hook failed or timed out:`, hookError)
+    const errorMessage = hookError instanceof Error && hookError.message.includes("timeout")
+      ? "Generation timed out after 8 minutes. The video may have processing issues."
+      : `Workflow hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`
+    await markGenerationFailed(generationId, errorMessage)
+    return { success: false, error: errorMessage }
+  }
+  
   const hookWaitTime = Date.now() - hookWaitStartTime
 
   console.log(`[Workflow] [${new Date().toISOString()}] Received fal result: ${falResult.status}, hook waited ${hookWaitTime}ms (${(hookWaitTime / 1000).toFixed(1)}s)`)
