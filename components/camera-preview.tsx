@@ -87,27 +87,63 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     
     console.log("[v0] Browser detection - Safari:", isSafari, "iOS:", isIOS)
     
-    // IMPORTANT: Record directly from camera stream for ALL browsers
-    // canvas.captureStream() produces WebM with corrupted metadata that fal.ai rejects
-    // The preview is mirrored via CSS, but the recording will NOT be mirrored
-    // This matches behavior of TikTok, Instagram, etc.
-    const recordingStream = originalStreamRef.current
-    console.log("[v0] Recording directly from camera stream (all browsers)")
+    // For Safari/iOS: Use canvas.captureStream() to produce WebM instead of MP4
+    // Safari's native MP4 recording has metadata issues that fal.ai rejects
+    // For Chrome: Record directly from camera stream
+    let recordingStream: MediaStream
+    
+    if (isSafari || isIOS) {
+      console.log("[v0] Safari detected - using canvas capture for WebM output")
+      // Create a canvas to capture and re-encode as WebM
+      const video = videoRef.current
+      const canvas = document.createElement("canvas")
+      canvas.width = video.videoWidth || 1280
+      canvas.height = video.videoHeight || 720
+      const ctx = canvas.getContext("2d")
+      
+      // Draw frames to canvas
+      const drawFrame = () => {
+        if (ctx && video.readyState >= 2) {
+          // Don't mirror - record as-is, preview is mirrored via CSS
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        }
+        if (mediaRecorderRef.current?.state === "recording") {
+          requestAnimationFrame(drawFrame)
+        }
+      }
+      
+      // Start drawing
+      requestAnimationFrame(drawFrame)
+      
+      // Capture stream from canvas + audio from original stream
+      const canvasStream = canvas.captureStream(30)
+      const audioTracks = originalStreamRef.current.getAudioTracks()
+      if (audioTracks.length > 0) {
+        canvasStream.addTrack(audioTracks[0])
+      }
+      recordingStream = canvasStream
+    } else {
+      // Chrome and others: record directly from camera
+      recordingStream = originalStreamRef.current
+      console.log("[v0] Recording directly from camera stream (Chrome)")
+    }
 
     chunksRef.current = []
     
     let mediaRecorder: MediaRecorder
     let mimeType: string
     
-    // Find best supported type - ALWAYS prefer MP4 for fal.ai compatibility
+    // Find best supported type
+    // Safari with canvas: prefer WebM (canvas produces WebM frames)
+    // Chrome: prefer WebM for direct camera recording
     const findSupportedType = () => {
-      // MP4 first (works directly with fal.ai), then WebM as fallback
+      // WebM first (better metadata handling), then MP4 as fallback
       const preferredOrder = [
+        "video/webm;codecs=vp9",
+        "video/webm;codecs=vp8",
+        "video/webm",
         "video/mp4",
         "video/mp4;codecs=avc1",
-        "video/webm;codecs=vp8",
-        "video/webm;codecs=vp9",
-        "video/webm",
       ]
       
       for (const type of preferredOrder) {
