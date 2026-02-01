@@ -111,15 +111,20 @@ export function useVideoRecording(): UseVideoRecordingReturn {
       const ratio = videoWidth / videoHeight
       let detectedAspectRatio: "9:16" | "16:9" | "fill" = "fill"
       
+      console.log("[v0] Video dimensions:", videoWidth, "x", videoHeight, "ratio:", ratio.toFixed(3))
+      
       if (ratio < 0.7) {
         // Portrait (9:16 is ~0.5625)
         detectedAspectRatio = "9:16"
+        console.log("[v0] Detected aspect ratio: 9:16 (portrait)")
       } else if (ratio > 1.4) {
         // Landscape (16:9 is ~1.777)
         detectedAspectRatio = "16:9"
+        console.log("[v0] Detected aspect ratio: 16:9 (landscape)")
       } else {
         // Square-ish or other - treat as fill
         detectedAspectRatio = "fill"
+        console.log("[v0] Detected aspect ratio: fill (square-ish)")
       }
       
       setRecordedVideo(blob)

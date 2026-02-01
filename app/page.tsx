@@ -44,8 +44,6 @@ export default function Home() {
 
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [sourceVideoUrl, setSourceVideoUrl] = useState<string | null>(null)
-  // Aspect ratio of the source/PiP video (from DB or from recording)
-  const [sourceVideoAspectRatio, setSourceVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [selectedGeneratedVideo, setSelectedGeneratedVideo] = useState<string | null>(null)
   const [bottomSheetExpanded, setBottomSheetExpanded] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState(false)
@@ -301,13 +299,13 @@ export default function Home() {
                   {/* PiP overlay - show original video with its actual aspect ratio */}
                   {showPip && (
                     <div className={`overflow-hidden rounded-lg border-2 border-white/20 shadow-lg ${
-                      // Use sourceVideoAspectRatio from DB when viewing a generation, otherwise use recordedAspectRatio
-                      (sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio) === "9:16" 
+                      recordedAspectRatio === "9:16" 
                         ? "aspect-[9/16] h-32 md:h-40" 
-                        : (sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio) === "16:9"
+                        : recordedAspectRatio === "16:9"
                           ? "aspect-video w-32 md:w-48"
                           : "aspect-video w-32 md:w-48"
                     }`}>
+                      {console.log("[v0] PiP rendering with aspectRatio:", recordedAspectRatio)}
                       <video
                         ref={pipVideoRef}
                         src={sourceVideoUrl || recordedVideoUrl || ""}
@@ -337,7 +335,7 @@ export default function Home() {
                           pipVideoUrl: pipSource,
                           pipPosition: "bottom-right",
                           pipScale: 0.25,
-                          pipAspectRatio: sourceVideoUrl ? sourceVideoAspectRatio : recordedAspectRatio,
+                          pipAspectRatio: recordedAspectRatio,
                           addWatermark: true,
                           onProgress: setDownloadProgress,
                         })
@@ -498,7 +496,6 @@ export default function Home() {
                   setSelectedGeneratedVideo(url)
                   setResultUrl(url)
                   setSourceVideoUrl(sourceUrl)
-                  setSourceVideoAspectRatio(aspectRatio)
                   setCurrentAspectRatio(aspectRatio)
                 }}
                 className="mt-4"
@@ -565,13 +562,12 @@ export default function Home() {
 
               >
                 <GenerationsPanel
-                  onSelectVideo={(url, sourceUrl, aspectRatio) => {
+                  onSelectVideo={(url, sourceUrl) => {
                     setSelectedGeneratedVideo(url)
                     setResultUrl(url)
                     setSourceVideoUrl(sourceUrl)
-                    setSourceVideoAspectRatio(aspectRatio)
                     setBottomSheetExpanded(false)
-                  }}}
+                  }}
                   className="mt-4"
                 />
               </CharacterGrid>
