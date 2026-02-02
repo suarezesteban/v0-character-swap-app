@@ -450,10 +450,15 @@ export default function Home() {
                 muted
                 loop 
                 playsInline
+                preload="auto"
                 className="h-full w-full object-cover"
                 onLoadedData={(e) => {
-                  // Unmute after autoplay starts
                   const video = e.currentTarget
+                  // Skip slightly past first frame to avoid low-quality keyframe in Chrome
+                  if (video.currentTime === 0) {
+                    video.currentTime = 0.1
+                  }
+                  // Unmute after autoplay starts
                   video.muted = false
                 }}
               />
