@@ -243,20 +243,18 @@ export function CharacterGrid({
             const ar = aspectRatios[char.id]
             // Calculate width based on aspect ratio (height is fixed at 100px mobile, 120px desktop)
             const isLandscape = ar === "16:9" || ar === "4:3"
+            const isSelected = selectedId === char.id
             
             return (
               <div key={char.id} className="group relative">
                 <button
                   onClick={() => {
-                    // If already selected, open expand view (useful for mobile)
-                    if (selectedId === char.id && onExpand) {
-                      onExpand(char.src, char.id, isCustom)
-                    } else {
+                    if (!isSelected) {
                       onSelect(char.id)
                     }
                   }}
                   disabled={disabled}
-                  data-selected={selectedId === char.id}
+                  data-selected={isSelected}
                   className={`relative h-[50px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${
                     isLandscape ? "w-[89px] md:w-[100px]" : "w-[38px] md:w-[42px]"
                   }`}
@@ -273,26 +271,44 @@ export function CharacterGrid({
                     blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAUH/8QAIhAAAgEDAwUBAAAAAAAAAAAAAQIDAAQRBRIhBhMiMUFR/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAZEQACAwEAAAAAAAAAAAAAAAABAgADESH/2gAMAwEAAhEDEEA/AKek6hY2+mWkM8qJMkKrIpbBDAYIOKVd"
                   />
                 </button>
-                {/* Hover actions - expand only (delete moved to expand view for safety) */}
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                  {/* Expand button */}
+                
+                {/* Delete button - subtle, appears on hover */}
+                {canDelete && !disabled && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (onExpand) {
-                        onExpand(char.src, char.id, isCustom)
-                      } else {
-                        window.open(char.src, '_blank')
+                      if (isCustom && onDeleteCustom) {
+                        onDeleteCustom(char.id)
+                      } else if (isDefault && onHideDefault) {
+                        onHideDefault(char.id)
                       }
                     }}
-                    className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
-                    title="View full image"
+                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-500 opacity-0 ring-1 ring-neutral-700 transition-all hover:bg-neutral-700 hover:text-white group-hover:opacity-100"
+                    title={isCustom ? "Delete character" : "Hide character"}
                   >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                    <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                </div>
+                )}
+
+                {/* Expand button - only shows when selected */}
+                {isSelected && onExpand && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onExpand(char.src, char.id, isCustom)
+                    }}
+                    className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/50"
+                    title="View full image"
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                      </svg>
+                    </div>
+                  </button>
+                )}
               </div>
             )
           })}
