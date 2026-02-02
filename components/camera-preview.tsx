@@ -85,44 +85,41 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
     const isSafari = /^((?!chrome|android).)*safari/i.test(ua) || isIOS
     
-    // For Safari/iOS: Use canvas.captureStream() to produce WebM instead of MP4
-    // Safari's native MP4 recording has metadata issues that fal.ai rejects
-    // For Chrome: Record directly from camera stream
+    // Use canvas for ALL browsers to record mirrored "selfie" video
+    // Safari also benefits from this since it produces WebM instead of problematic MP4
     let recordingStream: MediaStream
     
-    if (isSafari || isIOS) {
-      // Create a canvas to capture and re-encode as WebM
-      const video = videoRef.current
-      const canvas = document.createElement("canvas")
-      canvas.width = video.videoWidth || 1280
-      canvas.height = video.videoHeight || 720
-      const ctx = canvas.getContext("2d")
-      
-      // Draw frames to canvas
-      const drawFrame = () => {
-        if (ctx && video.readyState >= 2) {
-          // Don't mirror - record as-is, preview is mirrored via CSS
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        }
-        if (mediaRecorderRef.current?.state === "recording") {
-          requestAnimationFrame(drawFrame)
-        }
+    // Create a canvas to capture mirrored video
+    const video = videoRef.current
+    const canvas = document.createElement("canvas")
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext("2d")
+    
+    // Draw frames to canvas - mirrored for selfie effect
+    const drawFrame = () => {
+      if (ctx && video.readyState >= 2) {
+        // Mirror the video horizontally for selfie effect
+        ctx.save()
+        ctx.scale(-1, 1)
+        ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height)
+        ctx.restore()
       }
-      
-      // Start drawing
-      requestAnimationFrame(drawFrame)
-      
-      // Capture stream from canvas + audio from original stream
-      const canvasStream = canvas.captureStream(30)
-      const audioTracks = originalStreamRef.current.getAudioTracks()
-      if (audioTracks.length > 0) {
-        canvasStream.addTrack(audioTracks[0])
+      if (mediaRecorderRef.current?.state === "recording") {
+        requestAnimationFrame(drawFrame)
       }
-      recordingStream = canvasStream
-    } else {
-      // Chrome and others: record directly from camera
-      recordingStream = originalStreamRef.current
     }
+    
+    // Start drawing
+    requestAnimationFrame(drawFrame)
+    
+    // Capture stream from canvas + audio from original stream
+    const canvasStream = canvas.captureStream(30)
+    const audioTracks = originalStreamRef.current.getAudioTracks()
+    if (audioTracks.length > 0) {
+      canvasStream.addTrack(audioTracks[0])
+    }
+    recordingStream = canvasStream
 
     chunksRef.current = []
     
