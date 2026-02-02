@@ -286,14 +286,7 @@ export function GenerationsPanel({ onSelectVideo, className = "", variant = "def
               />
             )}
             
-            {/* Time indicator - only show for completed/failed, not for processing */}
-            {(gen.status === "completed" || gen.status === "failed") && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-1 py-0.5">
-                <span className="font-mono text-[8px] text-neutral-400">
-                  {formatTime(gen.completed_at || gen.created_at)}
-                </span>
-              </div>
-            )}
+
             </div>
             {/* Delete button - outside overflow container so it's not clipped */}
             {gen.status === "completed" && (
