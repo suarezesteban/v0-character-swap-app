@@ -41,6 +41,7 @@ export default function Home() {
   // Detected aspect ratio of the generated video (from character image)
   const [generatedVideoAspectRatio, setGeneratedVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [showPip, setShowPip] = useState(true)
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   // Video refs for sync
   const mainVideoRef = useRef<HTMLVideoElement>(null)
@@ -134,6 +135,32 @@ export default function Home() {
       }
     }
   }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl])
+
+  // Simulate upload progress over ~20 seconds
+  useEffect(() => {
+    if (isUploading) {
+      setUploadProgress(0)
+      const duration = 20000 // 20 seconds
+      const interval = 200 // Update every 200ms
+      const increment = 100 / (duration / interval)
+      
+      const timer = setInterval(() => {
+        setUploadProgress(prev => {
+          const next = prev + increment
+          // Cap at 95% - the final 5% happens when upload actually completes
+          return next >= 95 ? 95 : next
+        })
+      }, interval)
+      
+      return () => clearInterval(timer)
+    } else {
+      // When upload completes, briefly show 100% then reset
+      if (uploadProgress > 0) {
+        setUploadProgress(100)
+        setTimeout(() => setUploadProgress(0), 300)
+      }
+    }
+  }, [isUploading])
 
   // Auto-expand bottom sheet when video is recorded
   useEffect(() => {
@@ -435,25 +462,24 @@ export default function Home() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
                   <div className="flex w-full max-w-[280px] flex-col items-center gap-4 px-6">
                     <p className="font-sans text-[15px] font-medium tracking-wide text-white">
-                      {isUploading ? "Uploading" : "Processing video"}
+                      Procesando video
                     </p>
                     <div className="flex w-full flex-col items-center gap-2">
                       <div className="h-[2px] w-full overflow-hidden rounded-full bg-white/20">
-                        {isUploading ? (
-                          /* Animated indeterminate progress bar for upload */
-                          <div className="h-full w-1/3 animate-[shimmer_1.5s_ease-in-out_infinite] rounded-full bg-white" />
-                        ) : (
-                          <div
-                            className="h-full rounded-full bg-white transition-all duration-300 ease-out"
-                            style={{ width: `${Math.min(100, Math.max(0, processingProgress?.percent || 0))}%` }}
-                          />
-                        )}
+                        <div
+                          className="h-full rounded-full bg-white transition-all duration-200 ease-out"
+                          style={{ 
+                            width: `${isUploading 
+                              ? Math.round(uploadProgress) 
+                              : Math.min(100, Math.max(0, processingProgress?.percent || 0))}%` 
+                          }}
+                        />
                       </div>
-                      {!isUploading && (
-                        <p className="font-mono text-[13px] tabular-nums text-white/60">
-                          {Math.min(100, Math.max(0, processingProgress?.percent || 0))}%
-                        </p>
-                      )}
+                      <p className="font-mono text-[13px] tabular-nums text-white/60">
+                        {isUploading 
+                          ? Math.round(uploadProgress)
+                          : Math.min(100, Math.max(0, processingProgress?.percent || 0))}%
+                      </p>
                     </div>
                   </div>
                 </div>
