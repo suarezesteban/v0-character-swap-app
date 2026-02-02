@@ -42,7 +42,11 @@ export default function Home() {
   const [generatedVideoAspectRatio, setGeneratedVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [showPip, setShowPip] = useState(true)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [expandedCharacterImage, setExpandedCharacterImage] = useState<string | null>(null)
+  const [expandedCharacter, setExpandedCharacter] = useState<{
+    imageUrl: string
+    id: number
+    isCustom: boolean
+  } | null>(null)
 
   // Video refs for sync
   const mainVideoRef = useRef<HTMLVideoElement>(null)
@@ -509,7 +513,7 @@ export default function Home() {
                 onDeleteCustom={deleteCustomCharacter}
                 hiddenDefaultIds={hiddenDefaultIds}
                 onHideDefault={hideDefaultCharacter}
-                onExpand={setExpandedCharacterImage}
+                onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
                 canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl && !isProcessingVideo && !isUploading}
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
@@ -618,7 +622,7 @@ export default function Home() {
                     onDeleteCustom={deleteCustomCharacter}
                     hiddenDefaultIds={hiddenDefaultIds}
                     onHideDefault={hideDefaultCharacter}
-                    onExpand={setExpandedCharacterImage}
+                onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
                     canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl && !isProcessingVideo && !isUploading}
                     hasVideo={!!recordedVideo}
                     hasCharacter={!!selectedCharacter}
@@ -635,7 +639,7 @@ export default function Home() {
                   onDeleteCustom={deleteCustomCharacter}
                   hiddenDefaultIds={hiddenDefaultIds}
                   onHideDefault={hideDefaultCharacter}
-                  onExpand={setExpandedCharacterImage}
+                  onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
                   canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl && !isProcessingVideo && !isUploading}
                   hasVideo={!!recordedVideo}
                   hasCharacter={!!selectedCharacter}
@@ -696,21 +700,44 @@ export default function Home() {
       )}
 
       {/* Expanded Character Image Overlay */}
-      {expandedCharacterImage && (
+      {expandedCharacter && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
-          onClick={() => setExpandedCharacterImage(null)}
+          onClick={() => setExpandedCharacter(null)}
         >
+          {/* Close button */}
           <button
-            onClick={() => setExpandedCharacterImage(null)}
+            onClick={() => setExpandedCharacter(null)}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+          
+          {/* Delete button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              if (expandedCharacter.isCustom) {
+                deleteCustomCharacter(expandedCharacter.id)
+              } else {
+                hideDefaultCharacter(expandedCharacter.id)
+              }
+              setExpandedCharacter(null)
+            }}
+            className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-white transition-colors hover:bg-white/20"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+            </svg>
+            <span className="font-mono text-[13px]">
+              {expandedCharacter.isCustom ? "Delete" : "Hide"}
+            </span>
+          </button>
+
           <img 
-            src={expandedCharacterImage} 
+            src={expandedCharacter.imageUrl} 
             alt="Character preview"
             className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}

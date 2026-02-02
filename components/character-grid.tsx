@@ -20,7 +20,7 @@ interface CharacterGridProps {
   onDeleteCustom?: (id: number) => void
   hiddenDefaultIds?: number[]
   onHideDefault?: (id: number) => void
-  onExpand?: (imageUrl: string) => void
+  onExpand?: (imageUrl: string, characterId: number, isCustom: boolean) => void
   children?: React.ReactNode
   // Generate video CTA props
   canGenerate?: boolean
@@ -247,7 +247,14 @@ export function CharacterGrid({
             return (
               <div key={char.id} className="group relative">
                 <button
-                  onClick={() => onSelect(char.id)}
+                  onClick={() => {
+                    // If already selected, open expand view (useful for mobile)
+                    if (selectedId === char.id && onExpand) {
+                      onExpand(char.src, char.id, isCustom)
+                    } else {
+                      onSelect(char.id)
+                    }
+                  }}
                   disabled={disabled}
                   data-selected={selectedId === char.id}
                   className={`relative h-[50px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${
@@ -266,14 +273,14 @@ export function CharacterGrid({
                     blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAUH/8QAIhAAAgEDAwUBAAAAAAAAAAAAAQIDAAQRBRIhBhMiMUFR/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAZEQACAwEAAAAAAAAAAAAAAAABAgADESH/2gAMAwEAAhEDEEA/AKek6hY2+mWkM8qJMkKrIpbBDAYIOKVd"
                   />
                 </button>
-                {/* Hover actions - expand and delete */}
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                {/* Hover actions - expand only (delete moved to expand view for safety) */}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
                   {/* Expand button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       if (onExpand) {
-                        onExpand(char.src)
+                        onExpand(char.src, char.id, isCustom)
                       } else {
                         window.open(char.src, '_blank')
                       }
@@ -285,25 +292,6 @@ export function CharacterGrid({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
                     </svg>
                   </button>
-                  {/* Delete button */}
-                  {canDelete && !disabled && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (isCustom && onDeleteCustom) {
-                          onDeleteCustom(char.id)
-                        } else if (isDefault && onHideDefault) {
-                          onHideDefault(char.id)
-                        }
-                      }}
-                      className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
-                      title={isCustom ? "Delete character" : "Hide character"}
-                    >
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                      </svg>
-                    </button>
-                  )}
                 </div>
               </div>
             )
