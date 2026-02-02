@@ -466,7 +466,7 @@ export function CharacterGrid({
       {onGenerate && (
         <div className="shrink-0 pt-2 md:pt-4">
           <div className="flex flex-col gap-1.5 md:gap-4">
-            <div className="hidden items-center justify-center gap-3 font-mono text-[10px] text-neutral-500 md:flex">
+            <div className="hidden flex-col items-center gap-1 font-mono text-[10px] text-neutral-500 md:flex">
               <a 
                 href="https://vercel.com/templates/next.js/ai-face-swap"
                 target="_blank"
@@ -475,14 +475,12 @@ export function CharacterGrid({
               >
                 Make this app your own
               </a>
-              <span className="text-neutral-700">·</span>
               <button
                 onClick={() => setShowHowItWorks(true)}
                 className="transition-colors hover:text-white"
               >
                 How it works
               </button>
-              <span className="text-neutral-700">·</span>
               <a 
                 href="https://x.com/EstebanSuarez"
                 target="_blank"
