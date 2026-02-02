@@ -20,6 +20,7 @@ interface CharacterGridProps {
   onDeleteCustom?: (id: number) => void
   hiddenDefaultIds?: number[]
   onHideDefault?: (id: number) => void
+  onExpand?: (imageUrl: string) => void
   children?: React.ReactNode
   // Generate video CTA props
   canGenerate?: boolean
@@ -37,6 +38,7 @@ export function CharacterGrid({
   onDeleteCustom,
   hiddenDefaultIds = [],
   onHideDefault,
+  onExpand,
   children,
   canGenerate = false,
   hasVideo = false,
@@ -265,14 +267,18 @@ export function CharacterGrid({
                   />
                 </button>
                 {/* Hover actions - expand and delete */}
-                <div className="absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-lg bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
                   {/* Expand button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      window.open(char.src, '_blank')
+                      if (onExpand) {
+                        onExpand(char.src)
+                      } else {
+                        window.open(char.src, '_blank')
+                      }
                     }}
-                    className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+                    className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
                     title="View full image"
                   >
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -290,7 +296,7 @@ export function CharacterGrid({
                           onHideDefault(char.id)
                         }
                       }}
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+                      className="pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
                       title={isCustom ? "Delete character" : "Hide character"}
                     >
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

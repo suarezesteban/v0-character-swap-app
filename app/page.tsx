@@ -42,6 +42,7 @@ export default function Home() {
   const [generatedVideoAspectRatio, setGeneratedVideoAspectRatio] = useState<"9:16" | "16:9" | "fill">("fill")
   const [showPip, setShowPip] = useState(true)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [expandedCharacterImage, setExpandedCharacterImage] = useState<string | null>(null)
 
   // Video refs for sync
   const mainVideoRef = useRef<HTMLVideoElement>(null)
@@ -423,7 +424,7 @@ export default function Home() {
           </div>
         ) : recordedVideoUrl ? (
           <div 
-            className="relative flex h-full w-full"
+            className="relative flex h-full w-full items-center justify-center bg-black"
             onClick={(e) => {
               // If clicked outside the video container, go back to recording
               if (e.target === e.currentTarget) {
@@ -432,7 +433,7 @@ export default function Home() {
               }
             }}
           >
-            <div className="relative h-full w-full overflow-hidden bg-neutral-900">
+            <div className="relative h-full w-full overflow-hidden">
               <video 
                 src={recordedVideoUrl} 
                 controls 
@@ -508,6 +509,7 @@ export default function Home() {
                 onDeleteCustom={deleteCustomCharacter}
                 hiddenDefaultIds={hiddenDefaultIds}
                 onHideDefault={hideDefaultCharacter}
+                onExpand={setExpandedCharacterImage}
                 canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl && !isProcessingVideo && !isUploading}
                 hasVideo={!!recordedVideo}
                 hasCharacter={!!selectedCharacter}
@@ -616,6 +618,7 @@ export default function Home() {
                     onDeleteCustom={deleteCustomCharacter}
                     hiddenDefaultIds={hiddenDefaultIds}
                     onHideDefault={hideDefaultCharacter}
+                    onExpand={setExpandedCharacterImage}
                     canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl && !isProcessingVideo && !isUploading}
                     hasVideo={!!recordedVideo}
                     hasCharacter={!!selectedCharacter}
@@ -632,6 +635,7 @@ export default function Home() {
                   onDeleteCustom={deleteCustomCharacter}
                   hiddenDefaultIds={hiddenDefaultIds}
                   onHideDefault={hideDefaultCharacter}
+                  onExpand={setExpandedCharacterImage}
                   canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl && !isProcessingVideo && !isUploading}
                   hasVideo={!!recordedVideo}
                   hasCharacter={!!selectedCharacter}
@@ -688,6 +692,29 @@ export default function Home() {
       {errorToast && (
           <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-lg bg-red-900 px-4 py-2 shadow-lg">
           <p className="font-sans text-[13px] text-white">{errorToast}</p>
+        </div>
+      )}
+
+      {/* Expanded Character Image Overlay */}
+      {expandedCharacterImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+          onClick={() => setExpandedCharacterImage(null)}
+        >
+          <button
+            onClick={() => setExpandedCharacterImage(null)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img 
+            src={expandedCharacterImage} 
+            alt="Character preview"
+            className="max-h-[80vh] max-w-[90vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </main>
