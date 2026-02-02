@@ -135,12 +135,12 @@ export default function Home() {
         // Use character image aspect ratio, not recorded video aspect ratio
         getCharacterAspectRatio(character.src).then(characterAspectRatio => {
           setTimeout(() => {
-            processVideo(recordedVideo, character, false, uploadedVideoUrl, characterAspectRatio)
+            processVideo(getVideoForUpload, character, false, uploadedVideoUrl, characterAspectRatio, recordedAspectRatio)
           }, 100)
         })
       }
     }
-  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl])
+  }, [pendingAutoSubmit, user, recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, getVideoForUpload, recordedAspectRatio])
 
   // Simulate upload progress over ~20 seconds
   useEffect(() => {
