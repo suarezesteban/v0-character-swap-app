@@ -52,6 +52,7 @@ export function CharacterGrid({
   const [generationProgress, setGenerationProgress] = useState(0)
   const [showAiPrompt, setShowAiPrompt] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
   
   const visibleDefaultCharacters = defaultCharacters.filter(c => !hiddenDefaultIds.includes(c.id))
   const allCharacters = [...visibleDefaultCharacters, ...customCharacters]
@@ -465,17 +466,32 @@ export function CharacterGrid({
       {onGenerate && (
         <div className="shrink-0 pt-2 md:pt-4">
           <div className="flex flex-col gap-1.5 md:gap-4">
-            <p className="hidden font-mono text-[10px] text-neutral-600 md:block">
-              created by{" "}
+            <div className="hidden items-center justify-center gap-3 font-mono text-[10px] text-neutral-500 md:flex">
               <a 
-                href="https://x.com/EstebanSuarez" 
-                target="_blank" 
+                href="https://vercel.com/templates/next.js/ai-face-swap"
+                target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-500 transition-colors hover:text-white"
+                className="transition-colors hover:text-white"
               >
-                estebansuarez
+                Make this app your own
               </a>
-            </p>
+              <span className="text-neutral-700">·</span>
+              <button
+                onClick={() => setShowHowItWorks(true)}
+                className="transition-colors hover:text-white"
+              >
+                How it works
+              </button>
+              <span className="text-neutral-700">·</span>
+              <a 
+                href="https://x.com/EstebanSuarez"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:text-white"
+              >
+                @EstebanSuarez
+              </a>
+            </div>
             {generateError && (
               <p className="font-mono text-[10px] text-amber-400 md:text-[11px]">
                 {generateError}
@@ -503,6 +519,93 @@ export function CharacterGrid({
             >
               Generate video
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* How it works modal */}
+      {showHowItWorks && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowHowItWorks(false)}
+        >
+          <div 
+            className="relative mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl bg-neutral-900 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowHowItWorks(false)}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <h2 className="mb-4 font-sans text-xl font-semibold text-white">How it works</h2>
+            
+            <div className="space-y-4 font-sans text-[13px] leading-relaxed text-neutral-300">
+              <p>
+                This app uses <span className="text-white font-medium">Kling AI Motion Control</span> to 
+                transfer your facial expressions and movements onto any character image in real-time.
+              </p>
+              
+              <div className="rounded-lg bg-neutral-800/50 p-4">
+                <h3 className="mb-2 font-medium text-white">The AI Magic</h3>
+                <p className="text-neutral-400">
+                  Kling&apos;s motion control technology analyzes your video frame-by-frame, extracting 
+                  facial landmarks, expressions, and head movements. It then applies these to the 
+                  target character while maintaining their unique appearance.
+                </p>
+              </div>
+              
+              <div className="rounded-lg bg-neutral-800/50 p-4">
+                <h3 className="mb-2 font-medium text-white">Built with Vercel</h3>
+                <ul className="space-y-2 text-neutral-400">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neutral-500" />
+                    <span><span className="text-white">v0</span> — AI-powered development for rapid prototyping</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neutral-500" />
+                    <span><span className="text-white">Vercel AI SDK</span> — Unified API for AI model integration</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neutral-500" />
+                    <span><span className="text-white">AI Gateway</span> — Secure, cached AI API routing</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neutral-500" />
+                    <span><span className="text-white">Vercel Workflow</span> — Durable execution for video generation</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-neutral-500" />
+                    <span><span className="text-white">Vercel Blob</span> — Fast video and image storage</span>
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="rounded-lg bg-neutral-800/50 p-4">
+                <h3 className="mb-2 font-medium text-white">Client-side Processing</h3>
+                <p className="text-neutral-400">
+                  Video encoding runs in your browser using <span className="text-white">FFmpeg WebAssembly</span>, 
+                  ensuring fast processing without server round-trips. The final composition with 
+                  picture-in-picture and watermarks also happens locally.
+                </p>
+              </div>
+              
+              <p className="text-neutral-500">
+                Built by{" "}
+                <a 
+                  href="https://x.com/EstebanSuarez" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-white hover:underline"
+                >
+                  @EstebanSuarez
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       )}
