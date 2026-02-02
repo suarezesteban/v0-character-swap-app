@@ -228,13 +228,13 @@ export function CharacterGrid({
         </div>
       )}
       
-      <div className="-ml-1 shrink overflow-y-auto pl-1 md:min-h-0 md:flex-1">
+      <div className="shrink overflow-y-auto md:min-h-0 md:flex-1">
         <p className="mb-2 font-mono text-[10px] lowercase text-neutral-500 md:mb-3 md:text-[11px]">
           select character
         </p>
         
         {/* Grid container - flex wrap with fixed height */}
-        <div className="-mr-1 -mt-1 pr-1 pt-1">
+        <div className="pb-1 pt-1">
           <div className="flex flex-wrap gap-1.5 md:gap-3">
           {allCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
