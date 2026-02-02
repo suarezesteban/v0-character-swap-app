@@ -441,6 +441,7 @@ export default function Home() {
                 loop 
                 playsInline
                 className="h-full w-full object-cover" 
+                style={{ transform: "scaleX(-1)" }}
                 onLoadedData={(e) => {
                   // Unmute after autoplay starts
                   const video = e.currentTarget
@@ -462,7 +463,7 @@ export default function Home() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
                   <div className="flex w-full max-w-[280px] flex-col items-center gap-4 px-6">
                     <p className="font-sans text-[15px] font-medium tracking-wide text-white">
-                      Procesando video
+                      Processing video
                     </p>
                     <div className="flex w-full flex-col items-center gap-2">
                       <div className="h-[2px] w-full overflow-hidden rounded-full bg-white/20">
