@@ -87,6 +87,8 @@ export function CharacterGrid({
   const [showSubmitPrompt, setShowSubmitPrompt] = useState(false)
   const [showCategorySelect, setShowCategorySelect] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submittingCategory, setSubmittingCategory] = useState<CharacterCategory | null>(null)
+  const [submitDone, setSubmitDone] = useState(false)
 
   // Validate image dimensions (min 340x340 for fal.ai)
   const validateImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
@@ -230,19 +232,23 @@ export function CharacterGrid({
     if (!recentlyUploadedUrl || isSubmitting) return
     
     setIsSubmitting(true)
+    setSubmittingCategory(category)
     try {
       await fetch("/api/submit-character", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageUrl: recentlyUploadedUrl, category }),
       })
-      setShowSubmitPrompt(false)
-      setShowCategorySelect(false)
-      setRecentlyUploadedUrl(null)
+      setSubmitDone(true)
+      // Auto dismiss after showing "done"
+      setTimeout(() => {
+        dismissSubmitPrompt()
+      }, 1500)
     } catch (error) {
       console.error("Failed to submit:", error)
     } finally {
       setIsSubmitting(false)
+      setSubmittingCategory(null)
     }
   }
 
@@ -250,6 +256,7 @@ export function CharacterGrid({
     setShowSubmitPrompt(false)
     setShowCategorySelect(false)
     setRecentlyUploadedUrl(null)
+    setSubmitDone(false)
   }
 
   return (
@@ -574,58 +581,61 @@ export function CharacterGrid({
                 How it works
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Submit to gallery prompt - subtle toast */}
-      {showSubmitPrompt && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2">
-          <div className="flex flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 shadow-lg">
-            {!showCategorySelect ? (
-              <>
-                <p className="font-mono text-[11px] text-neutral-400">
-                  share this character with others?
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowCategorySelect(true)}
-                    className="rounded bg-white px-2.5 py-1 font-mono text-[10px] font-medium text-black transition-colors hover:bg-neutral-200"
-                  >
-                    submit
-                  </button>
-                  <button
-                    onClick={dismissSubmitPrompt}
-                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-500 transition-colors hover:text-white"
-                  >
-                    no thanks
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="font-mono text-[11px] text-neutral-400">
-                  select category
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(["memes", "cartoons", "celebs"] as CharacterCategory[]).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => handleSubmitToGallery(cat)}
-                      disabled={isSubmitting}
-                      className="rounded bg-neutral-800 px-2.5 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white disabled:opacity-50"
-                    >
-                      {isSubmitting ? "..." : cat}
-                    </button>
-                  ))}
-                  <button
-                    onClick={dismissSubmitPrompt}
-                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-500 transition-colors hover:text-white"
-                  >
-                    cancel
-                  </button>
-                </div>
-              </>
+            
+            {/* Submit to gallery prompt - inline in panel */}
+            {showSubmitPrompt && (
+              <div className="mt-2 rounded-lg border border-neutral-800 bg-neutral-900/50 px-3 py-2.5">
+                {submitDone ? (
+                  <p className="font-mono text-[11px] text-green-500">
+                    done! thanks for sharing
+                  </p>
+                ) : !showCategorySelect ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[10px] text-neutral-500">
+                      share with others?
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setShowCategorySelect(true)}
+                        className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white"
+                      >
+                        yes
+                      </button>
+                      <button
+                        onClick={dismissSubmitPrompt}
+                        className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400"
+                      >
+                        no
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p className="font-mono text-[10px] text-neutral-500">
+                      category:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(["memes", "cartoons", "celebs"] as CharacterCategory[]).map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => handleSubmitToGallery(cat)}
+                          disabled={isSubmitting}
+                          className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white disabled:opacity-50"
+                        >
+                          {submittingCategory === cat ? "..." : cat}
+                        </button>
+                      ))}
+                      <button
+                        onClick={dismissSubmitPrompt}
+                        disabled={isSubmitting}
+                        className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400 disabled:opacity-50"
+                      >
+                        cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
