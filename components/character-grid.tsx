@@ -529,6 +529,62 @@ export function CharacterGrid({
           </div>
         )}
         
+        {/* Submit to gallery prompt - after ai create, before my videos */}
+        {showSubmitPrompt && (
+          <div className="mt-3 rounded-lg border border-neutral-800 bg-neutral-900/50 px-3 py-2.5">
+            {submitDone ? (
+              <p className="font-mono text-[11px] text-green-500">
+                done! thanks for sharing
+              </p>
+            ) : !showCategorySelect ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-mono text-[10px] text-neutral-500">
+                  share with others?
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setShowCategorySelect(true)}
+                    className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white"
+                  >
+                    yes
+                  </button>
+                  <button
+                    onClick={dismissSubmitPrompt}
+                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400"
+                  >
+                    no
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="font-mono text-[10px] text-neutral-500">
+                  category:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["memes", "cartoons", "celebs"] as CharacterCategory[]).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => handleSubmitToGallery(cat)}
+                      disabled={isSubmitting}
+                      className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white disabled:opacity-50"
+                    >
+                      {submittingCategory === cat ? "..." : cat}
+                    </button>
+                  ))}
+                  <button
+                    onClick={dismissSubmitPrompt}
+                    disabled={isSubmitting}
+                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400 disabled:opacity-50"
+                  >
+                    cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
         {/* Children slot for My Videos panel */}
         {children}
       </div>
@@ -581,62 +637,6 @@ export function CharacterGrid({
                 How it works
               </button>
             </div>
-            
-            {/* Submit to gallery prompt - inline in panel */}
-            {showSubmitPrompt && (
-              <div className="mt-2 rounded-lg border border-neutral-800 bg-neutral-900/50 px-3 py-2.5">
-                {submitDone ? (
-                  <p className="font-mono text-[11px] text-green-500">
-                    done! thanks for sharing
-                  </p>
-                ) : !showCategorySelect ? (
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-[10px] text-neutral-500">
-                      share with others?
-                    </p>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setShowCategorySelect(true)}
-                        className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white"
-                      >
-                        yes
-                      </button>
-                      <button
-                        onClick={dismissSubmitPrompt}
-                        className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400"
-                      >
-                        no
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <p className="font-mono text-[10px] text-neutral-500">
-                      category:
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(["memes", "cartoons", "celebs"] as CharacterCategory[]).map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => handleSubmitToGallery(cat)}
-                          disabled={isSubmitting}
-                          className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white disabled:opacity-50"
-                        >
-                          {submittingCategory === cat ? "..." : cat}
-                        </button>
-                      ))}
-                      <button
-                        onClick={dismissSubmitPrompt}
-                        disabled={isSubmitting}
-                        className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400 disabled:opacity-50"
-                      >
-                        cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
