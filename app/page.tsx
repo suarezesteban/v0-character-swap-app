@@ -180,13 +180,10 @@ export default function Home() {
     if (!recordedVideo || !selectedCharacter) return
     const character = allCharacters.find(c => c.id === selectedCharacter)
     if (character) {
-      // Get the processed video (waits for processing if still in progress)
-      const videoToUpload = await getVideoForUpload()
-      if (!videoToUpload) return
-      
       // Use character image aspect ratio for generated video, but also pass recorded video aspect ratio
       const characterAspectRatio = await getCharacterAspectRatio(character.src)
-      processVideo(videoToUpload, character, false, uploadedVideoUrl, characterAspectRatio, recordedAspectRatio)
+      // Pass a function that will get the video when needed (allows immediate UI feedback)
+      processVideo(getVideoForUpload, character, false, uploadedVideoUrl, characterAspectRatio, recordedAspectRatio)
     }
   }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio, getVideoForUpload])
 

@@ -13,7 +13,14 @@ interface UseVideoGenerationOptions {
 }
 
 interface UseVideoGenerationReturn {
-  processVideo: (video: Blob, character: Character, sendEmail: boolean, preUploadedVideoUrl?: string | null) => void
+  processVideo: (
+    getVideo: () => Promise<Blob | null>, 
+    character: Character, 
+    sendEmail: boolean, 
+    preUploadedVideoUrl?: string | null,
+    aspectRatio?: "9:16" | "16:9" | "fill",
+    sourceVideoAspectRatio?: "9:16" | "16:9" | "fill"
+  ) => void
 }
 
 // Helper to validate image dimensions
@@ -35,7 +42,7 @@ export function useVideoGeneration({
   const processingRef = useRef(false)
 
   const processVideo = useCallback((
-    video: Blob,
+    getVideo: () => Promise<Blob | null>,
     character: Character,
     sendEmail: boolean,
     preUploadedVideoUrl?: string | null,
@@ -93,7 +100,13 @@ export function useVideoGeneration({
         // 2. Trigger refresh so it appears in "My Videos" immediately
         window.dispatchEvent(new CustomEvent("refresh-generations"))
 
-        // 3. Upload video (skip if already uploaded)
+        // 3. Get the video (waits for processing if still in progress)
+        const video = await getVideo()
+        if (!video) {
+          throw new Error("No video available")
+        }
+
+        // 4. Upload video (skip if already uploaded)
         let videoUrl = preUploadedVideoUrl
         if (!videoUrl) {
           const videoBlob = await upload(`videos/${Date.now()}-recording.webm`, video, {
@@ -103,7 +116,7 @@ export function useVideoGeneration({
           videoUrl = videoBlob.url
         }
 
-        // 4. Upload character image
+        // 5. Upload character image
         const characterResponse = await fetch(character.src)
         const characterBlob = await characterResponse.blob()
 
@@ -112,7 +125,7 @@ export function useVideoGeneration({
           handleUploadUrl: "/api/upload",
         })
 
-        // 5. Start actual generation
+        // 6. Start actual generation
         const startResponse = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
