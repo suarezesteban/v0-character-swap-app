@@ -22,6 +22,7 @@ interface UseCharactersReturn {
   selectedCategory: CharacterCategory | "all"
   setSelectedCategory: (category: CharacterCategory | "all") => void
   filteredCharacters: Character[]
+  updateCustomCharacterCategory: (characterId: number, category: CharacterCategory) => void
 }
 
 export function useCharacters({ user }: UseCharactersOptions): UseCharactersReturn {
@@ -152,6 +153,13 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     }))
   }, [])
 
+  // Update custom character category (when user shares it)
+  const updateCustomCharacterCategory = useCallback((characterId: number, category: CharacterCategory) => {
+    setCustomCharacters(prev => 
+      prev.map(c => c.id === characterId ? { ...c, category } : c)
+    )
+  }, [])
+
   // Add usage count to characters and sort by popularity
   const charactersWithUsage = DEFAULT_CHARACTERS.map(c => ({
     ...c,
@@ -185,5 +193,6 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     selectedCategory,
     setSelectedCategory,
     filteredCharacters,
+    updateCustomCharacterCategory,
   }
 }
