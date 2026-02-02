@@ -15,7 +15,6 @@ interface UseCharactersReturn {
   setSelectedCharacter: (id: number | null) => void
   addCustomCharacter: (character: Character) => Promise<void>
   deleteCustomCharacter: (id: number) => Promise<void>
-  updateCustomCharacterCategory: (id: number, category: CharacterCategory) => void
   hideDefaultCharacter: (id: number) => void
   visibleDefaultCharacters: Character[]
   allCharacters: Character[]
@@ -138,13 +137,6 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     }
   }, [selectedCharacter])
 
-  // Update custom character category (when user shares and selects category)
-  const updateCustomCharacterCategory = useCallback((id: number, category: CharacterCategory) => {
-    setCustomCharacters(prev => prev.map(c => 
-      c.id === id ? { ...c, category } : c
-    ))
-  }, [])
-
   // Track character usage (call when generating video)
   const trackCharacterUsage = useCallback((characterId: number) => {
     fetch("/api/character-usage", {
@@ -186,7 +178,6 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     setSelectedCharacter,
     addCustomCharacter,
     deleteCustomCharacter,
-    updateCustomCharacterCategory,
     hideDefaultCharacter,
     visibleDefaultCharacters,
     allCharacters,
