@@ -440,7 +440,7 @@ export default function Home() {
             <div className="relative h-full w-full overflow-hidden">
               <video 
                 src={recordedVideoUrl} 
-                controls 
+                controls={!isProcessingVideo && !isUploading}
                 autoPlay 
                 muted
                 loop 
