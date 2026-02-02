@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 
 interface ProcessingProgress {
   stage: "loading" | "processing" | "done" | "error"
@@ -15,100 +15,106 @@ interface UseVideoProcessorReturn {
 }
 
 /**
- * Detect if the browser is Chrome (or Chromium-based)
- * Chrome outputs WebM which fal.ai can handle directly
- */
-function isChromeBrowser(): boolean {
-  if (typeof navigator === "undefined") return false
-  const ua = navigator.userAgent
-  return ua.includes("Chrome") && !ua.includes("Edg")
-}
-
-/**
- * Hook to process video using MediaBunny (lightweight WebCodecs-based converter)
- * This fixes Safari MP4 metadata issues by re-muxing with fastStart enabled
- * Chrome is skipped since it outputs WebM which fal.ai handles directly
+ * Hook to process video using ffmpeg.wasm in the browser
+ * This fixes Safari MP4 metadata issues by re-encoding with proper settings
  */
 export function useVideoProcessor(): UseVideoProcessorReturn {
   const [progress, setProgress] = useState<ProcessingProgress | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const ffmpegRef = useRef<any>(null)
+  const loadedRef = useRef(false)
 
   const processVideo = useCallback(async (inputBlob: Blob): Promise<Blob> => {
-    // Skip processing for Chrome - outputs WebM which fal.ai handles fine
-    if (isChromeBrowser()) {
-      console.log("[v0] Chrome detected, skipping video processing")
-      setProgress({ stage: "done", percent: 100, message: "Ready!" })
-      return inputBlob
-    }
-
     setIsProcessing(true)
     setProgress({ stage: "loading", percent: 0, message: "Loading processor..." })
 
     try {
-      // Dynamically import mediabunny
-      const { 
-        Input, 
-        Output, 
-        Conversion, 
-        ALL_FORMATS, 
-        BlobSource, 
-        Mp4OutputFormat, 
-        BufferTarget 
-      } = await import("mediabunny")
+      // Dynamically import ffmpeg.wasm
+      const { FFmpeg } = await import("@ffmpeg/ffmpeg")
+      const { fetchFile, toBlobURL } = await import("@ffmpeg/util")
 
-      setProgress({ stage: "processing", percent: 20, message: "Preparing video..." })
+      // Initialize FFmpeg if not already loaded
+      if (!ffmpegRef.current) {
+        ffmpegRef.current = new FFmpeg()
+      }
+      
+      const ffmpeg = ffmpegRef.current
 
-      // Create input from blob
-      const input = new Input({
-        source: new BlobSource(inputBlob),
-        formats: ALL_FORMATS,
-      })
+      if (!loadedRef.current) {
+        setProgress({ stage: "loading", percent: 10, message: "Downloading ffmpeg..." })
+        
+        // Load ffmpeg with CORS-enabled URLs
+        const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm"
+        
+        ffmpeg.on("log", ({ message }: { message: string }) => {
+          console.log("[ffmpeg]", message)
+        })
 
-      // Create output with MP4 format and fastStart enabled (moves moov atom to beginning)
-      const target = new BufferTarget()
-      const output = new Output({
-        format: new Mp4OutputFormat({ fastStart: "in-memory" }),
-        target,
-      })
+        ffmpeg.on("progress", ({ progress: p }: { progress: number }) => {
+          const percent = Math.round(30 + p * 60) // 30-90% for processing
+          setProgress({ stage: "processing", percent, message: "Processing video..." })
+        })
 
-      setProgress({ stage: "processing", percent: 40, message: "Converting video..." })
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+        })
+        
+        loadedRef.current = true
+      }
 
-      // Initialize and execute conversion
-      const conversion = await Conversion.init({
-        input,
-        output,
-        video: {
-          codec: "avc", // H.264 for maximum compatibility
-        },
-        audio: {
-          codec: "aac",
-        },
-      })
+      setProgress({ stage: "processing", percent: 25, message: "Preparing video..." })
 
-      // Listen for progress
-      conversion.on("progress", (p: number) => {
-        const percent = Math.round(40 + p * 50) // 40-90%
-        setProgress({ stage: "processing", percent, message: "Converting video..." })
-      })
+      // Determine input format
+      const inputExt = inputBlob.type.includes("mp4") ? "mp4" : 
+                       inputBlob.type.includes("quicktime") ? "mov" : "webm"
+      const inputFile = `input.${inputExt}`
+      const outputFile = "output.mp4"
 
-      await conversion.execute()
+      // Write input file to ffmpeg's virtual filesystem
+      const inputData = await fetchFile(inputBlob)
+      await ffmpeg.writeFile(inputFile, inputData)
 
-      setProgress({ stage: "processing", percent: 95, message: "Finalizing..." })
+      setProgress({ stage: "processing", percent: 30, message: "Re-encoding video..." })
 
-      // Get the output buffer
-      const outputBlob = new Blob([target.buffer], { type: "video/mp4" })
+      // Run ffmpeg to re-encode with proper settings
+      // -movflags +faststart: Put moov atom at beginning (critical for Safari compatibility)
+      // -c:v libx264: Use H.264 codec (universal support)
+      // -preset ultrafast: Fast encoding (we're in the browser)
+      // -crf 23: Good quality/size balance
+      // -c:a aac: Use AAC audio codec
+      // -pix_fmt yuv420p: Standard pixel format for compatibility
+      await ffmpeg.exec([
+        "-i", inputFile,
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-crf", "23",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-y",
+        outputFile
+      ])
+
+      setProgress({ stage: "processing", percent: 90, message: "Finalizing..." })
+
+      // Read the output file
+      const outputData = await ffmpeg.readFile(outputFile)
+      
+      // Clean up files
+      await ffmpeg.deleteFile(inputFile)
+      await ffmpeg.deleteFile(outputFile)
+
+      // Create blob from output
+      const outputBlob = new Blob([outputData], { type: "video/mp4" })
 
       setProgress({ stage: "done", percent: 100, message: "Done!" })
       setIsProcessing(false)
 
-      console.log("[v0] Video processed with MediaBunny:", 
-        (inputBlob.size / 1024 / 1024).toFixed(2), "MB ->", 
-        (outputBlob.size / 1024 / 1024).toFixed(2), "MB"
-      )
-
       return outputBlob
     } catch (error) {
-      console.error("[v0] MediaBunny processing error:", error)
+      console.error("Video processing error:", error)
       setProgress({ 
         stage: "error", 
         percent: 0, 
@@ -117,7 +123,6 @@ export function useVideoProcessor(): UseVideoProcessorReturn {
       setIsProcessing(false)
       
       // Return original blob if processing fails - let fal.ai try to handle it
-      console.log("[v0] Falling back to original video")
       return inputBlob
     }
   }, [])
