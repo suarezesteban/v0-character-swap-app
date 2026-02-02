@@ -250,11 +250,11 @@ export function GenerationsPanel({ onSelectVideo, className = "", variant = "def
             {gen.status === "completed" && gen.video_url ? (
               <button
                 onClick={() => onSelectVideo?.(gen.video_url!, gen.source_video_url, gen.source_video_aspect_ratio || "fill")}
-                className="relative h-full w-full overflow-hidden rounded-lg"
+                className="relative h-full w-full"
               >
                 <video
                   src={gen.video_url}
-                  className="h-full w-full rounded-lg object-cover"
+                  className="h-full w-full object-cover"
                   muted
                   playsInline
                   preload="none"
@@ -265,7 +265,7 @@ export function GenerationsPanel({ onSelectVideo, className = "", variant = "def
                     e.currentTarget.currentTime = 0
                   }}
                 />
-                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                   <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z" />
                   </svg>
