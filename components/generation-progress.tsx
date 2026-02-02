@@ -64,7 +64,7 @@ export function GenerationProgress({
   const remainingSeconds = Math.max(0, ESTIMATED_DURATION - elapsedSeconds)
 
   return (
-    <div className="group relative flex h-full w-full flex-col overflow-hidden rounded-lg">
+    <div className="group relative flex h-full w-full flex-col overflow-hidden">
       {/* Background character image */}
       {characterImageUrl && (
         <Image
@@ -116,7 +116,7 @@ export function GenerationProgress({
 
       {/* Cancel confirmation overlay */}
       {showCancelConfirm && onCancel && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/90 p-2">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/90 p-2">
           <p className="text-center font-mono text-[8px] text-neutral-400">
             {getStatusMessage()}
           </p>
