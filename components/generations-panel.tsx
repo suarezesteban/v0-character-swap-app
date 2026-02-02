@@ -229,7 +229,7 @@ export function GenerationsPanel({ onSelectVideo, className = "", variant = "def
         </p>
       )}
       
-      <div className={variant === "compact" ? "flex gap-1 overflow-x-auto pb-1" : "-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 pt-2"}>
+      <div className={variant === "compact" ? "-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" : "-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 pt-2"}>
         {displayGenerations.map((gen) => {
           // Determine thumbnail width based on aspect ratio
           const isLandscape = gen.aspect_ratio === "16:9"

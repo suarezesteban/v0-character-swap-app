@@ -15,8 +15,20 @@ interface UseVideoProcessorReturn {
 }
 
 /**
+ * Detect if the browser is Chrome (or Chromium-based)
+ * Chrome outputs WebM with VP8/VP9 which fal.ai can handle directly
+ */
+function isChromeBrowser(): boolean {
+  if (typeof navigator === "undefined") return false
+  const ua = navigator.userAgent
+  // Chrome but not Edge (Edge also has "Chrome" in UA)
+  return ua.includes("Chrome") && !ua.includes("Edg")
+}
+
+/**
  * Hook to process video using ffmpeg.wasm in the browser
  * This fixes Safari MP4 metadata issues by re-encoding with proper settings
+ * Chrome is skipped since it outputs compatible formats directly
  */
 export function useVideoProcessor(): UseVideoProcessorReturn {
   const [progress, setProgress] = useState<ProcessingProgress | null>(null)
@@ -25,6 +37,13 @@ export function useVideoProcessor(): UseVideoProcessorReturn {
   const loadedRef = useRef(false)
 
   const processVideo = useCallback(async (inputBlob: Blob): Promise<Blob> => {
+    // Skip processing for Chrome - it outputs WebM which fal.ai handles fine
+    if (isChromeBrowser()) {
+      console.log("[v0] Chrome detected, skipping ffmpeg processing")
+      setProgress({ stage: "done", percent: 100, message: "Ready!" })
+      return inputBlob
+    }
+
     setIsProcessing(true)
     setProgress({ stage: "loading", percent: 0, message: "Loading processor..." })
 
