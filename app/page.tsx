@@ -64,6 +64,10 @@ export default function Home() {
     hideDefaultCharacter,
     visibleDefaultCharacters,
     allCharacters,
+    trackCharacterUsage,
+    selectedCategory,
+    setSelectedCategory,
+    filteredCharacters,
   } = useCharacters({ user })
 
   const {
@@ -181,12 +185,14 @@ export default function Home() {
     if (!recordedVideo || !selectedCharacter) return
     const character = allCharacters.find(c => c.id === selectedCharacter)
     if (character) {
+      // Track character usage for popularity
+      trackCharacterUsage(character.id)
       // Use character image aspect ratio for generated video, but also pass recorded video aspect ratio
       const characterAspectRatio = await getCharacterAspectRatio(character.src)
       // Pass a function that will get the video when needed (allows immediate UI feedback)
       processVideo(getVideoForUpload, character, false, uploadedVideoUrl, characterAspectRatio, recordedAspectRatio)
     }
-  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio, getVideoForUpload])
+  }, [recordedVideo, selectedCharacter, allCharacters, processVideo, uploadedVideoUrl, recordedAspectRatio, getVideoForUpload, trackCharacterUsage])
 
   const handleReset = useCallback(() => {
     clearRecording()
@@ -494,20 +500,23 @@ export default function Home() {
         <div className="flex h-full w-96 flex-col border-l border-neutral-800 bg-neutral-950 p-5">
           {renderAuthSection("desktop")}
           <div className="min-h-0 flex-1">
-<CharacterGrid
-                selectedId={selectedCharacter}
-                onSelect={setSelectedCharacter}
-                customCharacters={customCharacters}
-                onAddCustom={addCustomCharacter}
-                onDeleteCustom={deleteCustomCharacter}
-                hiddenDefaultIds={hiddenDefaultIds}
-                onHideDefault={hideDefaultCharacter}
-                onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
-                canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl}
-                hasVideo={!!recordedVideo}
-                hasCharacter={!!selectedCharacter}
-                onGenerate={handleProcess}
-              >
+                <CharacterGrid
+                  selectedId={selectedCharacter}
+                  onSelect={setSelectedCharacter}
+                  customCharacters={customCharacters}
+                  onAddCustom={addCustomCharacter}
+                  onDeleteCustom={deleteCustomCharacter}
+                  hiddenDefaultIds={hiddenDefaultIds}
+                  onHideDefault={hideDefaultCharacter}
+                  onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
+                  canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl}
+                  hasVideo={!!recordedVideo}
+                  hasCharacter={!!selectedCharacter}
+                  onGenerate={handleProcess}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  filteredCharacters={filteredCharacters}
+                >
                 <GenerationsPanel
                   onSelectVideo={(url, sourceUrl, aspectRatio) => {
                     setSelectedGeneratedVideo(url)
@@ -610,11 +619,14 @@ export default function Home() {
                     onDeleteCustom={deleteCustomCharacter}
                     hiddenDefaultIds={hiddenDefaultIds}
                     onHideDefault={hideDefaultCharacter}
-                onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
-                canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl}
+                    onExpand={(imageUrl, id, isCustom) => setExpandedCharacter({ imageUrl, id, isCustom })}
+                    canGenerate={!!recordedVideo && !!selectedCharacter && !resultUrl}
                     hasVideo={!!recordedVideo}
                     hasCharacter={!!selectedCharacter}
                     onGenerate={handleProcess}
+                    selectedCategory={selectedCategory}
+                    onCategoryChange={setSelectedCategory}
+                    filteredCharacters={filteredCharacters}
                   />
                 </>
               ) : (
@@ -632,6 +644,9 @@ export default function Home() {
                   hasVideo={!!recordedVideo}
                   hasCharacter={!!selectedCharacter}
                   onGenerate={handleProcess}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                  filteredCharacters={filteredCharacters}
                 >
                   <GenerationsPanel
                     onSelectVideo={(url, sourceUrl, aspectRatio) => {

@@ -13,11 +13,15 @@ export interface User {
 // Character Types
 // ===========================================
 
+export type CharacterCategory = "popular" | "memes" | "cartoons" | "celebs"
+
 export interface Character {
   id: number
   src: string
   name: string
+  category?: CharacterCategory
   dbId?: number // Database ID for custom/user-uploaded characters
+  usageCount?: number // Popularity count from DB
 }
 
 // ===========================================

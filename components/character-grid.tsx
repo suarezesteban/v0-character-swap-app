@@ -4,8 +4,8 @@ import React, { useRef, useState, useEffect } from "react"
 import Image from "next/image"
 import { cn, detectImageAspectRatio } from "@/lib/utils"
 import { upload } from "@vercel/blob/client"
-import type { Character } from "@/lib/types"
-import { defaultCharacters } from "@/lib/constants"
+import type { Character, CharacterCategory } from "@/lib/types"
+import { defaultCharacters, CHARACTER_CATEGORIES } from "@/lib/constants"
 
 // Re-export for backwards compatibility
 export { defaultCharacters }
@@ -27,6 +27,10 @@ interface CharacterGridProps {
   hasVideo?: boolean
   hasCharacter?: boolean
   onGenerate?: () => void
+  // Category filter props
+  selectedCategory?: CharacterCategory | "all"
+  onCategoryChange?: (category: CharacterCategory | "all") => void
+  filteredCharacters?: Character[]
 }
 
 export function CharacterGrid({ 
@@ -44,6 +48,9 @@ export function CharacterGrid({
   hasVideo = false,
   hasCharacter = false,
   onGenerate,
+  selectedCategory = "popular",
+  onCategoryChange,
+  filteredCharacters: externalFilteredCharacters,
 }: CharacterGridProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [prompt, setPrompt] = useState("")
@@ -56,6 +63,9 @@ export function CharacterGrid({
   
   const visibleDefaultCharacters = defaultCharacters.filter(c => !hiddenDefaultIds.includes(c.id))
   const allCharacters = [...visibleDefaultCharacters, ...customCharacters]
+  
+  // Use external filtered characters if provided, otherwise use all
+  const displayCharacters = externalFilteredCharacters || allCharacters
   
   // Track detected aspect ratios for each character image
   const [aspectRatios, setAspectRatios] = useState<Record<number, string>>({})
@@ -73,6 +83,10 @@ export function CharacterGrid({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showUploadTooltip, setShowUploadTooltip] = useState(false)
+  const [recentlyUploadedUrl, setRecentlyUploadedUrl] = useState<string | null>(null)
+  const [showSubmitPrompt, setShowSubmitPrompt] = useState(false)
+  const [showCategorySelect, setShowCategorySelect] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Validate image dimensions (min 340x340 for fal.ai)
   const validateImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
@@ -111,6 +125,10 @@ export function CharacterGrid({
       
       const newId = Math.max(...allCharacters.map(c => c.id), 0) + 1
       onAddCustom({ id: newId, src: blob.url, name: `Custom ${customCharacters.length + 1}` })
+      
+      // Show submit prompt after successful upload
+      setRecentlyUploadedUrl(blob.url)
+      setShowSubmitPrompt(true)
     } catch (error) {
       console.error("Failed to upload image:", error)
       setUploadError("Failed to upload image")
@@ -208,6 +226,32 @@ export function CharacterGrid({
     }
   }
 
+  const handleSubmitToGallery = async (category: CharacterCategory) => {
+    if (!recentlyUploadedUrl || isSubmitting) return
+    
+    setIsSubmitting(true)
+    try {
+      await fetch("/api/submit-character", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: recentlyUploadedUrl, category }),
+      })
+      setShowSubmitPrompt(false)
+      setShowCategorySelect(false)
+      setRecentlyUploadedUrl(null)
+    } catch (error) {
+      console.error("Failed to submit:", error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const dismissSubmitPrompt = () => {
+    setShowSubmitPrompt(false)
+    setShowCategorySelect(false)
+    setRecentlyUploadedUrl(null)
+  }
+
   return (
     <div 
       className={cn(
@@ -234,10 +278,30 @@ export function CharacterGrid({
           select character
         </p>
         
+        {/* Category tabs */}
+        {onCategoryChange && (
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {CHARACTER_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => onCategoryChange(cat.id)}
+                className={cn(
+                  "rounded-full px-2.5 py-1 font-mono text-[10px] transition-all",
+                  selectedCategory === cat.id
+                    ? "bg-white text-black"
+                    : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700 hover:text-white"
+                )}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+        )}
+        
         {/* Grid container - flex wrap with fixed height */}
         <div className="pb-1 pt-1">
           <div className="flex flex-wrap gap-1.5 md:gap-3">
-          {allCharacters.map((char) => {
+          {displayCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
             const canDelete = (isCustom && onDeleteCustom) || (isDefault && onHideDefault)
@@ -510,6 +574,59 @@ export function CharacterGrid({
                 How it works
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit to gallery prompt - subtle toast */}
+      {showSubmitPrompt && (
+        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex flex-col gap-3 rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 shadow-lg">
+            {!showCategorySelect ? (
+              <>
+                <p className="font-mono text-[11px] text-neutral-400">
+                  share this character with others?
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowCategorySelect(true)}
+                    className="rounded bg-white px-2.5 py-1 font-mono text-[10px] font-medium text-black transition-colors hover:bg-neutral-200"
+                  >
+                    submit
+                  </button>
+                  <button
+                    onClick={dismissSubmitPrompt}
+                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-500 transition-colors hover:text-white"
+                  >
+                    no thanks
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="font-mono text-[11px] text-neutral-400">
+                  select category
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(["memes", "cartoons", "celebs"] as CharacterCategory[]).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => handleSubmitToGallery(cat)}
+                      disabled={isSubmitting}
+                      className="rounded bg-neutral-800 px-2.5 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white disabled:opacity-50"
+                    >
+                      {isSubmitting ? "..." : cat}
+                    </button>
+                  ))}
+                  <button
+                    onClick={dismissSubmitPrompt}
+                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-500 transition-colors hover:text-white"
+                  >
+                    cancel
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import type { Character, User, ReferenceImage } from "@/lib/types"
+import type { Character, User, ReferenceImage, CharacterCategory } from "@/lib/types"
 import { STORAGE_KEYS, CUSTOM_CHARACTER_ID_OFFSET, DEFAULT_CHARACTERS } from "@/lib/constants"
 
 interface UseCharactersOptions {
@@ -18,12 +18,18 @@ interface UseCharactersReturn {
   hideDefaultCharacter: (id: number) => void
   visibleDefaultCharacters: Character[]
   allCharacters: Character[]
+  trackCharacterUsage: (characterId: number) => void
+  selectedCategory: CharacterCategory | "all"
+  setSelectedCategory: (category: CharacterCategory | "all") => void
+  filteredCharacters: Character[]
 }
 
 export function useCharacters({ user }: UseCharactersOptions): UseCharactersReturn {
   const [customCharacters, setCustomCharacters] = useState<Character[]>([])
   const [hiddenDefaultIds, setHiddenDefaultIds] = useState<number[]>([])
   const [selectedCharacter, setSelectedCharacter] = useState<number | null>(null)
+  const [usageMap, setUsageMap] = useState<Record<string, number>>({})
+  const [selectedCategory, setSelectedCategory] = useState<CharacterCategory | "all">("popular")
 
   // Load hidden default characters from localStorage
   useEffect(() => {
@@ -35,6 +41,18 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
         // Ignore parse errors
       }
     }
+  }, [])
+
+  // Fetch character usage stats
+  useEffect(() => {
+    fetch("/api/character-usage")
+      .then(res => res.json())
+      .then(data => {
+        if (data.usage) {
+          setUsageMap(data.usage)
+        }
+      })
+      .catch(console.error)
   }, [])
 
   // Load user's reference images from database
@@ -119,11 +137,39 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     }
   }, [selectedCharacter])
 
-  const visibleDefaultCharacters = DEFAULT_CHARACTERS.filter(
+  // Track character usage (call when generating video)
+  const trackCharacterUsage = useCallback((characterId: number) => {
+    fetch("/api/character-usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ characterId: String(characterId) }),
+    }).catch(console.error)
+    
+    // Update local state optimistically
+    setUsageMap(prev => ({
+      ...prev,
+      [String(characterId)]: (prev[String(characterId)] || 0) + 1,
+    }))
+  }, [])
+
+  // Add usage count to characters and sort by popularity
+  const charactersWithUsage = DEFAULT_CHARACTERS.map(c => ({
+    ...c,
+    usageCount: usageMap[String(c.id)] || 0,
+  }))
+
+  const visibleDefaultCharacters = charactersWithUsage.filter(
     c => !hiddenDefaultIds.includes(c.id)
   )
 
   const allCharacters = [...visibleDefaultCharacters, ...customCharacters]
+
+  // Filter characters by category
+  const filteredCharacters = selectedCategory === "popular"
+    ? [...allCharacters].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+    : selectedCategory === "all"
+    ? allCharacters
+    : allCharacters.filter(c => c.category === selectedCategory)
 
   return {
     customCharacters,
@@ -135,5 +181,9 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     hideDefaultCharacter,
     visibleDefaultCharacters,
     allCharacters,
+    trackCharacterUsage,
+    selectedCategory,
+    setSelectedCategory,
+    filteredCharacters,
   }
 }
