@@ -445,8 +445,7 @@ export default function Home() {
                 muted
                 loop 
                 playsInline
-                className="h-full w-full object-cover" 
-                style={{ transform: "scaleX(-1)" }}
+                className="h-full w-full object-cover"
                 onLoadedData={(e) => {
                   // Unmute after autoplay starts
                   const video = e.currentTarget
