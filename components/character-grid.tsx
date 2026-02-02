@@ -18,6 +18,7 @@ interface CharacterGridProps {
   customCharacters: Character[]
   onAddCustom: (character: Character) => void
   onDeleteCustom?: (id: number) => void
+  onUpdateCustomCategory?: (id: number, category: CharacterCategory) => void
   hiddenDefaultIds?: number[]
   onHideDefault?: (id: number) => void
   onExpand?: (imageUrl: string, characterId: number, isCustom: boolean) => void
@@ -40,6 +41,7 @@ export function CharacterGrid({
   customCharacters, 
   onAddCustom,
   onDeleteCustom,
+  onUpdateCustomCategory,
   hiddenDefaultIds = [],
   onHideDefault,
   onExpand,
@@ -84,6 +86,7 @@ export function CharacterGrid({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [showUploadTooltip, setShowUploadTooltip] = useState(false)
   const [recentlyUploadedUrl, setRecentlyUploadedUrl] = useState<string | null>(null)
+  const [recentlyUploadedId, setRecentlyUploadedId] = useState<number | null>(null)
   const [showSubmitPrompt, setShowSubmitPrompt] = useState(false)
   const [showCategorySelect, setShowCategorySelect] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -130,6 +133,7 @@ export function CharacterGrid({
       
       // Show submit prompt after successful upload
       setRecentlyUploadedUrl(blob.url)
+      setRecentlyUploadedId(newId)
       setShowSubmitPrompt(true)
     } catch (error) {
       console.error("Failed to upload image:", error)
@@ -239,6 +243,12 @@ export function CharacterGrid({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageUrl: recentlyUploadedUrl, category }),
       })
+      
+      // Also update the local custom character's category so it appears in filtered view
+      if (recentlyUploadedId && onUpdateCustomCategory) {
+        onUpdateCustomCategory(recentlyUploadedId, category)
+      }
+      
       setSubmitDone(true)
       // Auto dismiss after showing "done"
       setTimeout(() => {
@@ -256,6 +266,7 @@ export function CharacterGrid({
     setShowSubmitPrompt(false)
     setShowCategorySelect(false)
     setRecentlyUploadedUrl(null)
+    setRecentlyUploadedId(null)
     setSubmitDone(false)
   }
 
