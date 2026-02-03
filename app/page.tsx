@@ -68,6 +68,7 @@ export default function Home() {
     selectedCategory,
     setSelectedCategory,
     filteredCharacters,
+    updateCustomCharacterCategory,
   } = useCharacters({ user })
 
   const {
@@ -516,6 +517,7 @@ export default function Home() {
                   selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
                   filteredCharacters={filteredCharacters}
+                  onUpdateCharacterCategory={updateCustomCharacterCategory}
                 >
                 <GenerationsPanel
                   onSelectVideo={(url, sourceUrl, aspectRatio) => {
@@ -627,6 +629,7 @@ export default function Home() {
                     selectedCategory={selectedCategory}
                     onCategoryChange={setSelectedCategory}
                     filteredCharacters={filteredCharacters}
+                    onUpdateCharacterCategory={updateCustomCharacterCategory}
                   />
                 </>
               ) : (
@@ -647,6 +650,7 @@ export default function Home() {
                   selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
                   filteredCharacters={filteredCharacters}
+                  onUpdateCharacterCategory={updateCustomCharacterCategory}
                 >
                   <GenerationsPanel
                     onSelectVideo={(url, sourceUrl, aspectRatio) => {
