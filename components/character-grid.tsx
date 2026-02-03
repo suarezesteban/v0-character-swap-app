@@ -93,6 +93,8 @@ export function CharacterGrid({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submittingCategory, setSubmittingCategory] = useState<CharacterCategory | null>(null)
   const [submitDone, setSubmitDone] = useState(false)
+  const [characterName, setCharacterName] = useState("")
+  const [showNameInput, setShowNameInput] = useState(false)
 
   // Validate image dimensions (min 340x340 for fal.ai)
   const validateImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
@@ -234,7 +236,7 @@ export function CharacterGrid({
   }
 
   const handleSubmitToGallery = async (category: CharacterCategory) => {
-    if (!recentlyUploadedUrl || isSubmitting) return
+    if (!recentlyUploadedUrl || isSubmitting || !characterName.trim()) return
     
     setIsSubmitting(true)
     setSubmittingCategory(category)
@@ -242,7 +244,11 @@ export function CharacterGrid({
       await fetch("/api/submit-character", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: recentlyUploadedUrl, category }),
+        body: JSON.stringify({ 
+          imageUrl: recentlyUploadedUrl, 
+          category,
+          name: characterName.trim()
+        }),
       })
       
       // Update the custom character's category locally so it appears in filtered view
@@ -266,9 +272,11 @@ export function CharacterGrid({
   const dismissSubmitPrompt = () => {
     setShowSubmitPrompt(false)
     setShowCategorySelect(false)
+    setShowNameInput(false)
     setRecentlyUploadedUrl(null)
     setRecentlyUploadedId(null)
     setSubmitDone(false)
+    setCharacterName("")
   }
 
   return (
@@ -555,14 +563,14 @@ export function CharacterGrid({
               <p className="font-mono text-[11px] text-green-500">
                 done! thanks for sharing
               </p>
-            ) : !showCategorySelect ? (
+            ) : !showNameInput ? (
               <div className="flex items-center justify-between gap-2">
                 <p className="font-mono text-[10px] text-neutral-500">
                   share with others?
                 </p>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setShowCategorySelect(true)}
+                    onClick={() => setShowNameInput(true)}
                     className="rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-neutral-300 transition-colors hover:bg-neutral-700 hover:text-white"
                   >
                     yes
@@ -575,10 +583,44 @@ export function CharacterGrid({
                   </button>
                 </div>
               </div>
+            ) : !showCategorySelect ? (
+              <div className="flex flex-col gap-2">
+                <p className="font-mono text-[10px] text-neutral-500">
+                  character name:
+                </p>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={characterName}
+                    onChange={(e) => setCharacterName(e.target.value)}
+                    placeholder="e.g. SpongeBob"
+                    className="flex-1 rounded bg-neutral-800 px-2 py-1 font-mono text-[10px] text-white placeholder-neutral-600 outline-none ring-1 ring-neutral-700 focus:ring-neutral-500"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && characterName.trim()) {
+                        setShowCategorySelect(true)
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => setShowCategorySelect(true)}
+                    disabled={!characterName.trim()}
+                    className="rounded bg-neutral-700 px-2 py-1 font-mono text-[10px] text-white transition-colors hover:bg-neutral-600 disabled:opacity-50 disabled:hover:bg-neutral-700"
+                  >
+                    next
+                  </button>
+                  <button
+                    onClick={dismissSubmitPrompt}
+                    className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400"
+                  >
+                    cancel
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col gap-2">
                 <p className="font-mono text-[10px] text-neutral-500">
-                  category:
+                  category for &quot;{characterName}&quot;:
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {(["memes", "cartoons", "celebs"] as CharacterCategory[]).map((cat) => (
@@ -592,11 +634,11 @@ export function CharacterGrid({
                     </button>
                   ))}
                   <button
-                    onClick={dismissSubmitPrompt}
+                    onClick={() => setShowCategorySelect(false)}
                     disabled={isSubmitting}
                     className="rounded px-2 py-1 font-mono text-[10px] text-neutral-600 transition-colors hover:text-neutral-400 disabled:opacity-50"
                   >
-                    cancel
+                    back
                   </button>
                 </div>
               </div>

@@ -83,11 +83,12 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
         .then(res => res.json())
         .then(data => {
           if (data.images) {
-            const loadedCharacters: Character[] = data.images.map((img: ReferenceImage) => ({
+            const loadedCharacters: Character[] = data.images.map((img: ReferenceImage & { category?: string }) => ({
               id: CUSTOM_CHARACTER_ID_OFFSET + img.id,
               name: img.name,
               src: img.image_url,
               dbId: img.id,
+              category: img.category as CharacterCategory | undefined,
             }))
             setCustomCharacters(loadedCharacters)
           }
@@ -175,10 +176,24 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
 
   // Update custom character category (when user shares it)
   const updateCustomCharacterCategory = useCallback((characterId: number, category: CharacterCategory) => {
+    // Find the character to get its dbId
+    const character = customCharacters.find(c => c.id === characterId)
+    
+    // Update local state immediately
     setCustomCharacters(prev =>
       prev.map(c => c.id === characterId ? { ...c, category } : c)
     )
-  }, [])
+    
+    // Persist to database if the character has a dbId
+    if (character?.dbId) {
+      fetch(`/api/reference-images/${character.dbId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ category }),
+      }).catch(console.error)
+    }
+  }, [customCharacters])
 
   // Add usage count to characters and sort by popularity
   const charactersWithUsage = DEFAULT_CHARACTERS.map(c => ({

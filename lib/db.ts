@@ -100,6 +100,7 @@ export interface ReferenceImage {
   user_id: string
   name: string
   image_url: string
+  category: string | null
   created_at: Date
 }
 
@@ -128,6 +129,16 @@ export async function getUserReferenceImages(userId: string): Promise<ReferenceI
 export async function deleteReferenceImage(id: number, userId: string): Promise<boolean> {
   const result = await sql`
     DELETE FROM reference_images 
+    WHERE id = ${id} AND user_id = ${userId}
+    RETURNING id
+  `
+  return result.length > 0
+}
+
+export async function updateReferenceImageCategory(id: number, userId: string, category: string): Promise<boolean> {
+  const result = await sql`
+    UPDATE reference_images 
+    SET category = ${category}
     WHERE id = ${id} AND user_id = ${userId}
     RETURNING id
   `
