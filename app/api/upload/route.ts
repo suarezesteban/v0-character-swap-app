@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
         }
       },
       onUploadCompleted: async ({ blob }) => {
-        console.log(`[v0] Video uploaded: ${blob.pathname}, size: ${blob.size} bytes, contentType: ${blob.contentType}`)
+        const isImage = blob.contentType?.startsWith("image/")
+        const fileType = isImage ? "Image" : "Video"
+        console.log(`[v0] ${fileType} uploaded: ${blob.pathname}, size: ${blob.size} bytes, contentType: ${blob.contentType}`)
       },
     })
 

@@ -190,7 +190,15 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
     c => !hiddenDefaultIds.includes(c.id)
   )
 
-  const allCharacters = [...visibleDefaultCharacters, ...approvedCharacters, ...customCharacters]
+  // Get URLs of custom characters to filter out duplicates from approved
+  const customCharacterUrls = new Set(customCharacters.map(c => c.src))
+  
+  // Filter approved characters to exclude ones that are already in custom characters (same image URL)
+  const filteredApprovedCharacters = approvedCharacters.filter(
+    c => !customCharacterUrls.has(c.src)
+  )
+
+  const allCharacters = [...visibleDefaultCharacters, ...filteredApprovedCharacters, ...customCharacters]
 
   // Filter characters by category
   const filteredCharacters = selectedCategory === "popular"

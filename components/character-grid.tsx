@@ -72,16 +72,16 @@ export function CharacterGrid({
   // Track detected aspect ratios for each character image
   const [aspectRatios, setAspectRatios] = useState<Record<number, string>>({})
   
-  // Detect aspect ratios for all character images
+  // Detect aspect ratios for all display characters (includes approved from community)
   useEffect(() => {
-    allCharacters.forEach(async (char) => {
+    displayCharacters.forEach(async (char) => {
       if (!aspectRatios[char.id] && char.src) {
         const ar = await detectImageAspectRatio(char.src)
         console.log("[v0] Detected aspect ratio for", char.name, char.id, ":", ar)
         setAspectRatios(prev => ({ ...prev, [char.id]: ar }))
       }
     })
-  }, [allCharacters, aspectRatios])
+  }, [displayCharacters, aspectRatios])
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
