@@ -326,7 +326,7 @@ export function CharacterGrid({
         )}
         
         {/* Grid container - flex wrap with fixed height */}
-        <div className="p-1">
+        <div className="p-2.5">
           <div className="flex flex-wrap gap-3 md:gap-4">
           {displayCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
