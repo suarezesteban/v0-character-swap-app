@@ -326,8 +326,8 @@ export function CharacterGrid({
         )}
         
         {/* Grid container - flex wrap with fixed height */}
-        <div className="px-1 py-1.5">
-          <div className="flex flex-wrap gap-2 md:gap-2.5">
+        <div className="py-1">
+          <div className="flex flex-wrap gap-1.5 md:gap-2">
           {displayCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
@@ -356,7 +356,7 @@ export function CharacterGrid({
                   }}
                   disabled={disabled}
                   data-selected={isSelected}
-                  className={`relative h-[50px] overflow-hidden rounded-lg transition-all ring-1 ring-inset ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-[3px] data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${widthClass}`}
+                  className={`relative h-[50px] overflow-hidden rounded-lg border border-neutral-800 transition-all hover:border-neutral-600 data-[selected=true]:border-[2px] data-[selected=true]:border-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${widthClass}`}
                 >
                   <Image
                     src={char.src || "/placeholder.svg"}
