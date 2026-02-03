@@ -374,7 +374,7 @@ export function CharacterGrid({
                         onHideDefault(char.id)
                       }
                     }}
-                    className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-500 opacity-0 ring-1 ring-neutral-700 transition-all hover:bg-neutral-700 hover:text-white group-hover:opacity-100"
+                    className="absolute -right-1 -top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-neutral-800/90 text-neutral-500 opacity-0 ring-1 ring-neutral-700 transition-all hover:bg-neutral-700 hover:text-white group-hover:opacity-100"
                     title={isCustom ? "Delete character" : "Hide character"}
                   >
                     <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
