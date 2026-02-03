@@ -206,21 +206,33 @@ export function useCharacters({ user }: UseCharactersOptions): UseCharactersRetu
   )
 
   // Get URLs of custom characters to filter out duplicates from approved
-  const customCharacterUrls = new Set(customCharacters.map(c => c.src))
+  // Normalize URLs by removing query params and extracting just the path
+  const normalizeUrl = (url: string) => {
+    try {
+      const u = new URL(url)
+      return u.pathname
+    } catch {
+      return url
+    }
+  }
+  const customCharacterUrls = new Set(customCharacters.map(c => normalizeUrl(c.src)))
   
   // Filter approved characters to exclude ones that are already in custom characters (same image URL)
   const filteredApprovedCharacters = approvedCharacters.filter(
-    c => !customCharacterUrls.has(c.src)
+    c => !customCharacterUrls.has(normalizeUrl(c.src))
   )
 
   const allCharacters = [...visibleDefaultCharacters, ...filteredApprovedCharacters, ...customCharacters]
 
   // Filter characters by category
+  // Custom characters are ALWAYS shown regardless of category filter
+  const customCharacterIds = new Set(customCharacters.map(c => c.id))
+  
   const filteredCharacters = selectedCategory === "popular"
     ? [...allCharacters].sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
     : selectedCategory === "all"
     ? allCharacters
-    : allCharacters.filter(c => c.category === selectedCategory)
+    : allCharacters.filter(c => c.category === selectedCategory || customCharacterIds.has(c.id))
 
   return {
     customCharacters,

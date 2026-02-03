@@ -326,8 +326,8 @@ export function CharacterGrid({
         )}
         
         {/* Grid container - flex wrap with fixed height */}
-        <div className="pb-1 pt-1">
-          <div className="flex flex-wrap gap-1.5 md:gap-3">
+        <div className="pb-2 pt-2">
+          <div className="flex flex-wrap gap-2 md:gap-3">
           {displayCharacters.map((char) => {
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
@@ -356,13 +356,13 @@ export function CharacterGrid({
                   }}
                   disabled={disabled}
                   data-selected={isSelected}
-                  className={`relative h-[50px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${widthClass}`}
+                  className={`relative h-[50px] rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${widthClass}`}
                 >
                   <Image
                     src={char.src || "/placeholder.svg"}
                     alt={char.name}
                     fill
-                    className={`object-cover ${isPortrait ? "object-top" : "object-center"}`}
+                    className={`rounded-lg object-cover ${isPortrait ? "object-top" : "object-center"}`}
                     sizes="(max-width: 768px) 133px, 160px"
                     quality={60}
                     loading="lazy"
