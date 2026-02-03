@@ -77,6 +77,7 @@ export function CharacterGrid({
     allCharacters.forEach(async (char) => {
       if (!aspectRatios[char.id] && char.src) {
         const ar = await detectImageAspectRatio(char.src)
+        console.log("[v0] Detected aspect ratio for", char.name, char.id, ":", ar)
         setAspectRatios(prev => ({ ...prev, [char.id]: ar }))
       }
     })
@@ -323,10 +324,19 @@ export function CharacterGrid({
             const isCustom = customCharacters.some(c => c.id === char.id)
             const isDefault = visibleDefaultCharacters.some(c => c.id === char.id)
             const canDelete = (isCustom && onDeleteCustom) || (isDefault && onHideDefault)
-            const ar = aspectRatios[char.id]
-            // Calculate width based on aspect ratio (height is fixed at 100px mobile, 120px desktop)
+            const ar = aspectRatios[char.id] || "1:1" // Default to square while loading
+            // Calculate width based on aspect ratio (height is fixed at 50px mobile, 56px desktop)
             const isLandscape = ar === "16:9" || ar === "4:3"
+            const isSquare = ar === "1:1"
+            const isPortrait = ar === "9:16" || ar === "3:4"
             const isSelected = selectedId === char.id
+            
+            // Width classes based on aspect ratio
+            const widthClass = isLandscape 
+              ? "w-[89px] md:w-[100px]" 
+              : isSquare 
+              ? "w-[50px] md:w-[56px]" 
+              : "w-[38px] md:w-[42px]"
             
             return (
               <div key={char.id} className="group relative">
@@ -338,15 +348,13 @@ export function CharacterGrid({
                   }}
                   disabled={disabled}
                   data-selected={isSelected}
-                  className={`relative h-[50px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${
-                    isLandscape ? "w-[89px] md:w-[100px]" : "w-[38px] md:w-[42px]"
-                  }`}
+                  className={`relative h-[50px] overflow-hidden rounded-lg transition-all ring-1 ring-neutral-800 hover:ring-neutral-600 data-[selected=true]:ring-2 data-[selected=true]:ring-white disabled:cursor-not-allowed disabled:opacity-50 md:h-[56px] ${widthClass}`}
                 >
                   <Image
                     src={char.src || "/placeholder.svg"}
                     alt={char.name}
                     fill
-                    className={`object-cover ${isLandscape ? "object-center" : "object-top"}`}
+                    className={`object-cover ${isPortrait ? "object-top" : "object-center"}`}
                     sizes="(max-width: 768px) 133px, 160px"
                     quality={60}
                     loading="lazy"
