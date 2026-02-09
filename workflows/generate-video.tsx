@@ -129,8 +129,10 @@ async function generateVideoWithAISDK(
         characterOrientation: "video" as const,
         // Standard mode (cost-effective)
         mode: "std" as const,
+        // Poll every 5 seconds for faster completion detection
+        pollIntervalMs: 5_000,
         // Extended poll timeout since video generation takes minutes
-        pollTimeoutMs: 12 * 60 * 1000, // 12 minutes
+        pollTimeoutMs: 14 * 60 * 1000, // 14 minutes
       },
     },
   })
