@@ -5,14 +5,14 @@ import type { Character, CharacterCategory } from "./types"
 // ===========================================
 
 export const MAX_VIDEO_SIZE = 50 * 1024 * 1024 // 50MB
-export const MAX_VIDEO_DURATION = 30 // seconds - fal.ai limit
-export const MIN_VIDEO_DURATION = 3 // seconds - fal.ai requirement
+export const MAX_VIDEO_DURATION = 30 // seconds - KlingAI limit via AI Gateway
+export const MIN_VIDEO_DURATION = 3 // seconds - KlingAI requirement
 
 // ===========================================
 // Image Constraints
 // ===========================================
 
-export const MIN_IMAGE_DIMENSION = 340 // pixels - fal.ai minimum
+export const MIN_IMAGE_DIMENSION = 340 // pixels - KlingAI minimum
 
 // ===========================================
 // Character Categories

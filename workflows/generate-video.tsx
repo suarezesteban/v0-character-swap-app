@@ -1,5 +1,3 @@
-import { createHook } from "workflow"
-
 /**
  * Input for the video generation workflow
  */
@@ -12,30 +10,15 @@ export interface GenerateVideoInput {
 }
 
 /**
- * Result from fal.ai webhook
- */
-export interface FalWebhookResult {
-  status: "OK" | "ERROR"
-  request_id: string
-  payload?: {
-    video?: {
-      url: string
-    }
-    detail?: Array<{ msg?: string; message?: string }>
-  }
-  error?: string
-}
-
-/**
- * Durable workflow for video generation using hooks (not polling!)
+ * Durable workflow for video generation using AI SDK + AI Gateway
  * 
  * Flow:
- * 1. Workflow creates a hook with token `fal-generation-{generationId}`
- * 2. Workflow submits to fal.ai with our webhook URL
- * 3. Workflow suspends at `await hook` (ZERO resources consumed)
- * 4. fal.ai completes and calls /api/fal-webhook
- * 5. /api/fal-webhook calls resumeHook() to wake the workflow
- * 6. Workflow resumes and processes the result
+ * 1. Workflow calls generateVideo via AI SDK with KlingAI motion control
+ * 2. AI SDK handles polling internally until video is ready
+ * 3. Workflow saves the resulting video to Vercel Blob
+ * 4. Workflow updates the database and sends email notification
+ * 
+ * No webhook needed - AI SDK handles the entire generation lifecycle.
  */
 export async function generateVideoWorkflow(input: GenerateVideoInput) {
   "use workflow"
@@ -43,195 +26,126 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
   const { generationId, videoUrl, characterImageUrl, characterName, userEmail } = input
 
   const workflowStartTime = Date.now()
-  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId}`)
+  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId} via AI Gateway`)
 
-  // Create a hook with deterministic token so fal-webhook can resume it
-  // Timeout after 8 minutes - if fal.ai doesn't respond by then, something is wrong
-  const hook = createHook<FalWebhookResult>({
-    token: `fal-generation-${generationId}`,
-    timeout: 8 * 60 * 1000, // 8 minutes in milliseconds
-  })
-
-  console.log(`[Workflow] [${new Date().toISOString()}] Created hook with token: fal-generation-${generationId} (+${Date.now() - workflowStartTime}ms)`)
-
-  // Submit to fal.ai - pass the hook token so fal-webhook knows which workflow to resume
-  const submitStartTime = Date.now()
-  const requestId = await submitToFal(generationId, videoUrl, characterImageUrl, hook.token)
-
-  console.log(`[Workflow] [${new Date().toISOString()}] Submitted to fal.ai (request_id: ${requestId}), submitToFal took ${Date.now() - submitStartTime}ms, waiting for webhook...`)
-
-  // SUSPEND HERE - workflow sleeps with ZERO resource consumption
-  // until /api/fal-webhook calls resumeHook() or timeout is reached
-  const hookWaitStartTime = Date.now()
-  let falResult: FalWebhookResult
-  
+  // Generate video using AI SDK + KlingAI motion control
+  let videoData: Uint8Array
   try {
-    falResult = await hook
-  } catch (hookError) {
-    // Hook timed out or failed
-    console.error(`[Workflow] [${new Date().toISOString()}] Hook failed or timed out:`, hookError)
-    const errorMessage = hookError instanceof Error && hookError.message.includes("timeout")
-      ? "Generation timed out after 8 minutes. The video may have processing issues."
-      : `Workflow hook error: ${hookError instanceof Error ? hookError.message : String(hookError)}`
+    const generateStartTime = Date.now()
+    videoData = await generateVideoWithAISDK(generationId, videoUrl, characterImageUrl)
+    const generateTime = Date.now() - generateStartTime
+    console.log(`[Workflow] [${new Date().toISOString()}] Video generated in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
+  } catch (genError) {
+    console.error(`[Workflow] [${new Date().toISOString()}] Video generation failed:`, genError)
+    const errorMessage = genError instanceof Error ? genError.message : String(genError)
     await markGenerationFailed(generationId, errorMessage)
     return { success: false, error: errorMessage }
   }
-  
-  const hookWaitTime = Date.now() - hookWaitStartTime
 
-  console.log(`[Workflow] [${new Date().toISOString()}] Received fal result: ${falResult.status}, hook waited ${hookWaitTime}ms (${(hookWaitTime / 1000).toFixed(1)}s)`)
+  // Save video to Vercel Blob
+  const blobStartTime = Date.now()
+  const blobUrl = await saveVideoToBlob(generationId, videoData)
+  console.log(`[Workflow] [${new Date().toISOString()}] saveVideoToBlob took ${Date.now() - blobStartTime}ms`)
 
-  // Process the result
-  if (falResult.status === "OK" && falResult.payload?.video?.url) {
-    // Save video to Blob (PiP disabled - ffmpeg.wasm doesn't work in Node.js)
-    const blobStartTime = Date.now()
-    const blobUrl = await saveVideoToBlob(generationId, falResult.payload.video.url)
-    console.log(`[Workflow] [${new Date().toISOString()}] saveVideoToBlob took ${Date.now() - blobStartTime}ms`)
+  // Update database
+  const dbStartTime = Date.now()
+  await markGenerationComplete(generationId, blobUrl)
+  console.log(`[Workflow] [${new Date().toISOString()}] markGenerationComplete took ${Date.now() - dbStartTime}ms`)
 
-    // Update database
-    const dbStartTime = Date.now()
-    await markGenerationComplete(generationId, blobUrl)
-    console.log(`[Workflow] [${new Date().toISOString()}] markGenerationComplete took ${Date.now() - dbStartTime}ms`)
-
-    // Send email notification
-    if (userEmail) {
-      const emailStartTime = Date.now()
-      await sendCompletionEmail(userEmail, blobUrl, characterName)
-      console.log(`[Workflow] [${new Date().toISOString()}] sendCompletionEmail took ${Date.now() - emailStartTime}ms`)
-    }
-
-    const totalTime = Date.now() - workflowStartTime
-    console.log(`[Workflow] [${new Date().toISOString()}] Generation ${generationId} completed: ${blobUrl}`)
-    console.log(`[Workflow] [TIMING SUMMARY] Total: ${totalTime}ms (${(totalTime / 1000).toFixed(1)}s), Hook wait: ${hookWaitTime}ms (${(hookWaitTime / 1000).toFixed(1)}s)`)
-    return { success: true, videoUrl: blobUrl }
-  } else {
-    // Handle failure - log full response for debugging
-    console.error(`[Workflow] [${new Date().toISOString()}] Generation ${generationId} FAILED`)
-    console.error(`[Workflow] Full fal result:`, JSON.stringify(falResult, null, 2))
-    console.error(`[Workflow] Input videoUrl: ${videoUrl}`)
-    console.error(`[Workflow] Input characterImageUrl: ${characterImageUrl}`)
-    
-    let errorMessage = "Unknown error"
-
-    if (falResult.payload?.detail?.length) {
-      const detail = falResult.payload.detail[0]
-      errorMessage = detail.msg || detail.message || falResult.error || "Validation error"
-      console.error(`[Workflow] Error detail:`, JSON.stringify(detail, null, 2))
-    } else if (falResult.error) {
-      errorMessage = falResult.error
-    }
-
-    await markGenerationFailed(generationId, errorMessage)
-    console.error(`[Workflow] Final error message: ${errorMessage}`)
-    return { success: false, error: errorMessage }
+  // Send email notification
+  if (userEmail) {
+    const emailStartTime = Date.now()
+    await sendCompletionEmail(userEmail, blobUrl, characterName)
+    console.log(`[Workflow] [${new Date().toISOString()}] sendCompletionEmail took ${Date.now() - emailStartTime}ms`)
   }
+
+  const totalTime = Date.now() - workflowStartTime
+  console.log(`[Workflow] [${new Date().toISOString()}] Generation ${generationId} completed: ${blobUrl}`)
+  console.log(`[Workflow] [TIMING SUMMARY] Total: ${totalTime}ms (${(totalTime / 1000).toFixed(1)}s)`)
+  return { success: true, videoUrl: blobUrl }
 }
 
 // ============================================
 // STEP FUNCTIONS (have full Node.js access)
 // ============================================
 
-async function submitToFal(
+async function generateVideoWithAISDK(
   generationId: number,
   videoUrl: string,
   characterImageUrl: string,
-  hookToken: string
-): Promise<string> {
+): Promise<Uint8Array> {
   "use step"
 
   const stepStartTime = Date.now()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] submitToFal starting...`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideoWithAISDK starting...`)
 
-  const { fal } = await import("@fal-ai/client")
-  const { updateGenerationRunId, updateGenerationFailed } = await import("@/lib/db")
+  const { experimental_generateVideo: generateVideo } = await import("ai")
+  const { gateway } = await import("@/lib/gateway")
+  const { updateGenerationRunId } = await import("@/lib/db")
+
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
-  fal.config({ credentials: process.env.FAL_KEY })
+  // Download the character image to pass as bytes to AI SDK
+  const imageStart = Date.now()
+  const imageResponse = await fetch(characterImageUrl)
+  if (!imageResponse.ok) {
+    throw new Error(`Failed to download character image: ${imageResponse.status} ${imageResponse.statusText}`)
+  }
+  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Character image downloaded in ${Date.now() - imageStart}ms, size: ${imageBuffer.length} bytes`)
 
-  // Video is already processed client-side with ffmpeg.wasm
-  // Just upload to fal.storage for processing
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Uploading pre-processed video to fal.storage: ${videoUrl}`)
-  
-  let finalVideoUrl: string
-  
-  try {
-    const videoFetchStart = Date.now()
-    const videoResponse = await fetch(videoUrl)
-    if (!videoResponse.ok) {
-      throw new Error(`Failed to download video: ${videoResponse.status} ${videoResponse.statusText}`)
-    }
-    const videoBlob = await videoResponse.blob()
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Video downloaded in ${Date.now() - videoFetchStart}ms, size: ${videoBlob.size} bytes, type: ${videoBlob.type}`)
-    
-    if (videoBlob.size === 0) {
-      throw new Error("Downloaded video blob is empty (0 bytes)")
-    }
+  // Update run ID with a placeholder so UI knows it's processing
+  await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
-    const falUploadStart = Date.now()
-    finalVideoUrl = await fal.storage.upload(videoBlob)
-    console.log(`[Workflow Step] [${new Date().toISOString()}] fal.storage.upload took ${Date.now() - falUploadStart}ms, url: ${finalVideoUrl}`)
-    
-    if (!finalVideoUrl) {
-      throw new Error("fal.storage.upload returned empty URL")
-    }
-  } catch (uploadError) {
-    console.error(`[Workflow Step] [${new Date().toISOString()}] Video upload failed:`, uploadError)
-    await updateGenerationFailed(generationId, `Video upload failed: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`)
-    throw uploadError
+  // Generate video using AI SDK with KlingAI motion control via AI Gateway
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
+
+  const generateStart = Date.now()
+  const result = await generateVideo({
+    model: gateway.video("klingai/kling-v2.6-motion-control"),
+    prompt: {
+      image: imageBuffer,
+    },
+    providerOptions: {
+      klingai: {
+        // Reference motion video URL - the user's recorded video
+        videoUrl: videoUrl,
+        // Match orientation from the reference video
+        characterOrientation: "video" as const,
+        // Standard mode (cost-effective)
+        mode: "std" as const,
+        // Extended poll timeout since video generation takes minutes
+        pollTimeoutMs: 12 * 60 * 1000, // 12 minutes
+      },
+    },
+  })
+
+  const generateTime = Date.now() - generateStart
+  console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideo completed in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Generated ${result.videos.length} video(s)`)
+
+  if (result.videos.length === 0) {
+    throw new Error("No videos were generated")
   }
 
-  // Build our webhook URL with both generationId and hookToken
-  const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000"
-
-  const webhookUrl = `${baseUrl}/api/fal-webhook?generationId=${generationId}&hookToken=${hookToken}`
-
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Submitting to fal.ai with webhook: ${webhookUrl}`)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Input: image_url=${characterImageUrl}, video_url=${finalVideoUrl}`)
-
-  const falSubmitStart = Date.now()
-  const { request_id } = await fal.queue.submit("fal-ai/kling-video/v2.6/standard/motion-control", {
-    input: {
-      image_url: characterImageUrl,
-      video_url: finalVideoUrl,
-      character_orientation: "video",
-    },
-    webhookUrl,
-  })
-  console.log(`[Workflow Step] [${new Date().toISOString()}] fal.queue.submit took ${Date.now() - falSubmitStart}ms`)
-
-  const dbUpdateStart = Date.now()
-  await updateGenerationRunId(generationId, request_id)
-  console.log(`[Workflow Step] [${new Date().toISOString()}] updateGenerationRunId took ${Date.now() - dbUpdateStart}ms`)
-
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Submitted, request_id: ${request_id}, total step time: ${Date.now() - stepStartTime}ms`)
-  return request_id
+  // Return the first video's raw bytes
+  const videoBytes = result.videos[0].uint8Array
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Video size: ${videoBytes.length} bytes, total step time: ${Date.now() - stepStartTime}ms`)
+  
+  return videoBytes
 }
 
-async function saveVideoToBlob(generationId: number, falVideoUrl: string): Promise<string> {
+async function saveVideoToBlob(generationId: number, videoData: Uint8Array): Promise<string> {
   "use step"
 
   const stepStartTime = Date.now()
   const { put } = await import("@vercel/blob")
 
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Downloading video from fal: ${falVideoUrl}`)
-
-  const fetchStartTime = Date.now()
-  const response = await fetch(falVideoUrl)
-  if (!response.ok) {
-    throw new Error(`Failed to download video: ${response.status}`)
-  }
-  console.log(`[Workflow Step] [${new Date().toISOString()}] fetch() took ${Date.now() - fetchStartTime}ms, status: ${response.status}`)
-
-  const blobConvertStart = Date.now()
-  const videoBlob = await response.blob()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] response.blob() took ${Date.now() - blobConvertStart}ms, size: ${videoBlob.size} bytes`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Saving ${videoData.length} bytes to Vercel Blob`)
 
   const putStartTime = Date.now()
-  const { url } = await put(`generations/${generationId}-${Date.now()}.mp4`, videoBlob, {
+  const { url } = await put(`generations/${generationId}-${Date.now()}.mp4`, videoData, {
     access: "public",
     contentType: "video/mp4",
   })
@@ -265,7 +179,7 @@ async function sendCompletionEmail(email: string, videoUrl: string, characterNam
   try {
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
-      from: "SwapVid <noreply@resend.dev>",
+      from: "v0 Face Swap <noreply@resend.dev>",
       to: email,
       subject: "Your video is ready!",
       html: `
