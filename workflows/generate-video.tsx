@@ -26,7 +26,7 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
   const { generationId, videoUrl, characterImageUrl, characterName, userEmail } = input
 
   const workflowStartTime = Date.now()
-  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId} via AI Gateway (v68-error-logging)`)
+  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId} via AI Gateway`)
 
   // Generate video using AI SDK + KlingAI motion control
   let videoData: Uint8Array
@@ -99,6 +99,21 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
+  // Validate that both URLs are accessible before calling generateVideo
+  const [imageCheck, videoCheck] = await Promise.all([
+    fetch(characterImageUrl, { method: "HEAD" }).catch(e => ({ ok: false, status: 0, statusText: String(e) })),
+    fetch(videoUrl, { method: "HEAD" }).catch(e => ({ ok: false, status: 0, statusText: String(e) })),
+  ])
+  console.log(`[Workflow Step] [${new Date().toISOString()}] URL check - image: ${imageCheck.ok ? "OK" : `FAIL ${imageCheck.status}`}, video: ${videoCheck.ok ? "OK" : `FAIL ${videoCheck.status}`}`)
+  
+  if (!imageCheck.ok || !videoCheck.ok) {
+    const { RetryableError } = await import("workflow")
+    throw new RetryableError(
+      `Input URLs not accessible - image: ${imageCheck.ok}, video: ${videoCheck.ok}`,
+      { retryAfter: "10s" }
+    )
+  }
+
   // Update run ID with a placeholder so UI knows it's processing
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
@@ -107,8 +122,10 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
+  let result: Awaited<ReturnType<typeof generateVideo>>
+
   try {
-    const result = await generateVideo({
+    result = await generateVideo({
       model: gateway.video("klingai/kling-v2.6-motion-control"),
       prompt: {
         image: characterImageUrl,
@@ -128,74 +145,41 @@ async function generateVideoWithAISDK(
         },
       },
     })
-
-    const generateTime = Date.now() - generateStart
-    console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideo completed in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Generated ${result.videos.length} video(s)`)
-
-    if (result.videos.length === 0) {
-      throw new Error("No videos were generated")
-    }
-
-    // Return the first video's raw bytes
-    const videoBytes = result.videos[0].uint8Array
-    console.log(`[Workflow Step] [${new Date().toISOString()}] Video size: ${videoBytes.length} bytes, total step time: ${Date.now() - stepStartTime}ms`)
-    
-    return videoBytes
   } catch (error) {
     const elapsed = Date.now() - generateStart
-    const ts = new Date().toISOString()
-    
-    console.error(`[Workflow Step] [${ts}] === generateVideo FAILED after ${elapsed}ms (${(elapsed / 1000).toFixed(1)}s) ===`)
-    console.error(`[Workflow Step] [${ts}] Error type: ${typeof error}`)
-    console.error(`[Workflow Step] [${ts}] Error constructor: ${error?.constructor?.name ?? "unknown"}`)
-    
-    let errorMsg = "Unknown error"
-
+    // Safely extract error details - some errors may not be standard Error instances
+    let errorMsg: string
     if (error instanceof Error) {
       errorMsg = error.message
-      console.error(`[Workflow Step] [${ts}] Error.name: ${error.name}`)
-      console.error(`[Workflow Step] [${ts}] Error.message: ${error.message}`)
-      console.error(`[Workflow Step] [${ts}] Error.stack: ${error.stack}`)
-      
-      // AI SDK errors have .cause, .responses, .data, .statusCode
-      const aiErr = error as Error & { cause?: unknown; responses?: unknown; value?: unknown; data?: unknown; statusCode?: number; responseBody?: unknown }
-      if (aiErr.cause !== undefined) console.error(`[Workflow Step] [${ts}] Error.cause:`, JSON.stringify(aiErr.cause, null, 2))
-      if (aiErr.responses !== undefined) console.error(`[Workflow Step] [${ts}] Error.responses:`, JSON.stringify(aiErr.responses, null, 2))
-      if (aiErr.data !== undefined) console.error(`[Workflow Step] [${ts}] Error.data:`, JSON.stringify(aiErr.data, null, 2))
-      if (aiErr.statusCode !== undefined) console.error(`[Workflow Step] [${ts}] Error.statusCode: ${aiErr.statusCode}`)
-      if (aiErr.responseBody !== undefined) console.error(`[Workflow Step] [${ts}] Error.responseBody:`, JSON.stringify(aiErr.responseBody, null, 2))
-      
-      // Enumerate ALL own properties including non-enumerable
-      const allProps = Object.getOwnPropertyNames(error)
-      console.error(`[Workflow Step] [${ts}] All error properties: [${allProps.join(", ")}]`)
-      for (const prop of allProps) {
-        if (!["name", "message", "stack"].includes(prop)) {
-          try {
-            console.error(`[Workflow Step] [${ts}] Error.${prop}:`, JSON.stringify((error as Record<string, unknown>)[prop], null, 2))
-          } catch { /* not serializable */ }
-        }
-      }
-    } else if (error && typeof error === "object") {
-      const allProps = Object.getOwnPropertyNames(error)
-      console.error(`[Workflow Step] [${ts}] Non-Error object properties: [${allProps.join(", ")}]`)
-      for (const prop of allProps) {
-        try {
-          console.error(`[Workflow Step] [${ts}] error.${prop}:`, JSON.stringify((error as Record<string, unknown>)[prop], null, 2))
-        } catch { /* not serializable */ }
-      }
-      try { errorMsg = JSON.stringify(error) } catch { errorMsg = String(error) }
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo Error after ${elapsed}ms: ${error.message}`)
+      console.error(`[Workflow Step] Stack: ${error.stack}`)
+    } else if (error && typeof error === "object" && "message" in error) {
+      errorMsg = String((error as { message: unknown }).message)
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo object error after ${elapsed}ms: ${errorMsg}`)
     } else {
-      errorMsg = String(error)
-      console.error(`[Workflow Step] [${ts}] Primitive error value: ${errorMsg}`)
+      errorMsg = `Unknown error type: ${typeof error}`
+      try { errorMsg = JSON.stringify(error) } catch { /* ignore */ }
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo unknown error after ${elapsed}ms: ${errorMsg}`)
     }
-
-    console.error(`[Workflow Step] [${ts}] === END ERROR DETAILS ===`)
     
-    // Re-throw with RetryableError for workflow retry
+    // Throw RetryableError so workflow retries with backoff
     const { RetryableError } = await import("workflow")
     throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: "30s" })
   }
+
+  const generateTime = Date.now() - generateStart
+  console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideo completed in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Generated ${result.videos.length} video(s)`)
+
+  if (result.videos.length === 0) {
+    throw new Error("No videos were generated")
+  }
+
+  // Return the first video's raw bytes
+  const videoBytes = result.videos[0].uint8Array
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Video size: ${videoBytes.length} bytes, total step time: ${Date.now() - stepStartTime}ms`)
+  
+  return videoBytes
 }
 
 async function saveVideoToBlob(generationId: number, videoData: Uint8Array): Promise<string> {

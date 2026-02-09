@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { start } from "workflow/api"
 import { createGeneration, updateGenerationStartProcessing } from "@/lib/db"
+import { generateVideoWorkflow } from "@/workflows/generate-video"
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,29 +47,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fire-and-forget: call the generate-video API route in the background
-    // This runs as a separate serverless function with maxDuration=800
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : `http://localhost:${process.env.PORT || 3000}`
-
-    fetch(`${baseUrl}/api/generate-video`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        generationId,
-        videoUrl,
-        characterImageUrl,
-        characterName: characterName || undefined,
-        userEmail: sendEmail ? userEmail : undefined,
-      }),
-    }).catch((err) => {
-      console.error("[Generate] Failed to start background generation:", err)
-    })
+    // Start the durable workflow using workflow/api
+    // This returns immediately - the workflow runs in the background
+    const run = await start(generateVideoWorkflow, [{
+      generationId,
+      videoUrl,
+      characterImageUrl,
+      characterName: characterName || undefined,
+      userEmail: sendEmail ? userEmail : undefined,
+    }])
 
     return NextResponse.json({
       success: true,
       generationId,
+      runId: run.runId,
       message: "Video generation started",
     })
   } catch (error) {
