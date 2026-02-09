@@ -80,8 +80,8 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideoWithAISDK starting...`)
 
   const { experimental_generateVideo: generateVideo } = await import("ai")
-  const { gateway } = await import("@/lib/gateway")
   const { updateGenerationRunId } = await import("@/lib/db")
+  const { Agent } = await import("undici")
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
@@ -101,11 +101,22 @@ async function generateVideoWithAISDK(
   // Generate video using AI SDK with KlingAI motion control via AI Gateway
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
+  // Custom fetch with extended timeouts for video generation (can take 10+ minutes)
+  const longTimeoutFetch = (url: string | URL | Request, init?: RequestInit) =>
+    fetch(url, {
+      ...init,
+      dispatcher: new Agent({
+        headersTimeout: 15 * 60 * 1000, // 15 minutes
+        bodyTimeout: 15 * 60 * 1000,    // 15 minutes
+      }),
+    } as RequestInit)
+
   const generateStart = Date.now()
   const result = await generateVideo({
-    model: gateway.video("klingai/kling-v2.6-motion-control"),
+    model: "klingai/kling-v2.6-motion-control",
     prompt: {
       image: imageBuffer,
+      text: "Perform the motion from the reference video",
     },
     providerOptions: {
       klingai: {
@@ -119,6 +130,7 @@ async function generateVideoWithAISDK(
         pollTimeoutMs: 12 * 60 * 1000, // 12 minutes
       },
     },
+    fetch: longTimeoutFetch,
   })
 
   const generateTime = Date.now() - generateStart
