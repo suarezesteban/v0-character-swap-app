@@ -147,44 +147,61 @@ async function generateVideoWithAISDK(
     })
   } catch (error) {
     const elapsed = Date.now() - generateStart
+    const ts = new Date().toISOString()
     
-    // Extract detailed error info - check for NoVideoGeneratedError from AI SDK
-    let errorMsg: string
-    let isTimeout = false
+    console.error(`[Workflow Step] [${ts}] === generateVideo FAILED after ${elapsed}ms (${(elapsed / 1000).toFixed(1)}s) ===`)
+    console.error(`[Workflow Step] [${ts}] Error type: ${typeof error}`)
+    console.error(`[Workflow Step] [${ts}] Error constructor: ${error?.constructor?.name ?? "unknown"}`)
     
+    let errorMsg = "Unknown error"
+
     if (error instanceof Error) {
       errorMsg = error.message
-      isTimeout = errorMsg.includes("timeout") || errorMsg.includes("Timeout") || errorMsg.includes("timed out")
+      console.error(`[Workflow Step] [${ts}] Error.name: ${error.name}`)
+      console.error(`[Workflow Step] [${ts}] Error.message: ${error.message}`)
+      console.error(`[Workflow Step] [${ts}] Error.stack: ${error.stack}`)
       
-      // Log full error details
-      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsed}ms`)
-      console.error(`[Workflow Step] Error name: ${error.name}`)
-      console.error(`[Workflow Step] Error message: ${error.message}`)
-      console.error(`[Workflow Step] Stack: ${error.stack}`)
+      // AI SDK errors like NoVideoGeneratedError have .cause and .responses
+      const aiErr = error as Error & { cause?: unknown; responses?: unknown; value?: unknown; data?: unknown; statusCode?: number; responseBody?: unknown }
+      if (aiErr.cause !== undefined) console.error(`[Workflow Step] [${ts}] Error.cause:`, JSON.stringify(aiErr.cause, null, 2))
+      if (aiErr.responses !== undefined) console.error(`[Workflow Step] [${ts}] Error.responses:`, JSON.stringify(aiErr.responses, null, 2))
+      if (aiErr.value !== undefined) console.error(`[Workflow Step] [${ts}] Error.value:`, JSON.stringify(aiErr.value, null, 2))
+      if (aiErr.data !== undefined) console.error(`[Workflow Step] [${ts}] Error.data:`, JSON.stringify(aiErr.data, null, 2))
+      if (aiErr.statusCode !== undefined) console.error(`[Workflow Step] [${ts}] Error.statusCode: ${aiErr.statusCode}`)
+      if (aiErr.responseBody !== undefined) console.error(`[Workflow Step] [${ts}] Error.responseBody:`, JSON.stringify(aiErr.responseBody, null, 2))
       
-      // Check for AI SDK specific error properties
-      const aiError = error as Error & { cause?: unknown; responses?: unknown; value?: unknown }
-      if (aiError.cause) {
-        console.error(`[Workflow Step] Error cause: ${JSON.stringify(aiError.cause, null, 2)}`)
+      // Enumerate ALL own properties (including non-enumerable)
+      const allProps = Object.getOwnPropertyNames(error)
+      console.error(`[Workflow Step] [${ts}] All error properties: [${allProps.join(", ")}]`)
+      for (const prop of allProps) {
+        if (!["name", "message", "stack"].includes(prop)) {
+          try {
+            console.error(`[Workflow Step] [${ts}] Error.${prop}:`, JSON.stringify((error as Record<string, unknown>)[prop], null, 2))
+          } catch {
+            console.error(`[Workflow Step] [${ts}] Error.${prop}: [not serializable]`)
+          }
+        }
       }
-      if (aiError.responses) {
-        console.error(`[Workflow Step] Error responses: ${JSON.stringify(aiError.responses, null, 2)}`)
-      }
-    } else {
-      // Non-Error object - enumerate all properties
-      errorMsg = `Non-Error thrown: ${typeof error}`
-      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsed}ms`)
-      console.error(`[Workflow Step] Error type: ${typeof error}`)
-      if (error && typeof error === "object") {
-        const keys = Object.getOwnPropertyNames(error)
-        console.error(`[Workflow Step] Error keys: ${keys.join(", ")}`)
-        for (const key of keys) {
-          try { console.error(`[Workflow Step] Error.${key}: ${JSON.stringify((error as Record<string, unknown>)[key])}`) } catch { /* ignore */ }
+    } else if (error && typeof error === "object") {
+      // Non-Error object - enumerate everything
+      const allProps = Object.getOwnPropertyNames(error)
+      console.error(`[Workflow Step] [${ts}] Non-Error object properties: [${allProps.join(", ")}]`)
+      for (const prop of allProps) {
+        try {
+          console.error(`[Workflow Step] [${ts}] error.${prop}:`, JSON.stringify((error as Record<string, unknown>)[prop], null, 2))
+        } catch {
+          console.error(`[Workflow Step] [${ts}] error.${prop}: [not serializable]`)
         }
       }
       try { errorMsg = JSON.stringify(error) } catch { errorMsg = String(error) }
+    } else {
+      errorMsg = String(error)
+      console.error(`[Workflow Step] [${ts}] Primitive error value: ${errorMsg}`)
     }
+
+    console.error(`[Workflow Step] [${ts}] === END ERROR DETAILS ===`)
     
+    // Throw RetryableError so workflow retries with backoff
     const { RetryableError } = await import("workflow")
     throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: "30s" })
   }

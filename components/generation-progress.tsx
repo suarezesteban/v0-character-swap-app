@@ -10,10 +10,10 @@ interface GenerationProgressProps {
   onCancel?: (e?: React.MouseEvent) => void
 }
 
-// Estimated time in seconds (~12 min based on real AI Gateway usage)
-const ESTIMATED_DURATION = 12 * 60
+// Estimated time in seconds (~7 min based on real usage data)
+const ESTIMATED_DURATION = 7 * 60
 // Max display time - after this, something might be wrong
-const MAX_DISPLAY_TIME = 16 * 60
+const MAX_DISPLAY_TIME = 12 * 60
 
 export function GenerationProgress({ 
   characterImageUrl, 
@@ -39,8 +39,7 @@ export function GenerationProgress({
     return () => clearInterval(interval)
   }, [createdAt])
 
-  // Cap at 95% to avoid showing 100% while still processing
-  const progress = isPastEstimate ? 95 : Math.min(95, (elapsedSeconds / ESTIMATED_DURATION) * 100)
+  const progress = Math.min(100, (elapsedSeconds / ESTIMATED_DURATION) * 100)
   
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -49,22 +48,20 @@ export function GenerationProgress({
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  // Status-specific messages (adjusted for ~12 min total duration via AI Gateway)
+  // Status-specific messages (adjusted for ~7 min total duration)
   const getStatusMessage = () => {
     if (status === "uploading") return "Uploading video..."
     if (status === "pending") return "In queue..."
     if (elapsedSeconds < 30) return "Starting AI model..."
     if (elapsedSeconds < 120) return "Analyzing motion..."
-    if (elapsedSeconds < 300) return "Processing frames..."
-    if (elapsedSeconds < 540) return "Generating video..."
-    if (elapsedSeconds < 660) return "Rendering final..."
-    if (elapsedSeconds < ESTIMATED_DURATION) return "Almost done..."
-    if (elapsedSeconds < MAX_DISPLAY_TIME) return "Taking a bit longer..."
-    return "Still working on it..."
+    if (elapsedSeconds < 240) return "Processing frames..."
+    if (elapsedSeconds < 360) return "Generating video..."
+    if (elapsedSeconds < 420) return "Rendering final..."
+    if (elapsedSeconds < MAX_DISPLAY_TIME) return "Almost done..."
+    return "Taking longer than usual..."
   }
 
   const remainingSeconds = Math.max(0, ESTIMATED_DURATION - elapsedSeconds)
-  const isPastEstimate = elapsedSeconds > ESTIMATED_DURATION
 
   return (
     <div className="group relative flex h-full w-full flex-col overflow-hidden">
@@ -124,7 +121,7 @@ export function GenerationProgress({
             {getStatusMessage()}
           </p>
           <p className="font-mono text-[10px] text-white">
-            {isPastEstimate ? "Finishing up..." : `~${formatTime(remainingSeconds)} left`}
+            ~{formatTime(remainingSeconds)} left
           </p>
           <div className="mt-1 flex gap-1">
             <button
@@ -178,9 +175,7 @@ export function GenerationProgressExpanded({
   }, [createdAt])
 
   const remainingSeconds = Math.max(0, ESTIMATED_DURATION - elapsedSeconds)
-  const isPastEstimate = elapsedSeconds > ESTIMATED_DURATION
-  // Cap progress at 95% when past estimate to avoid showing 100% while still processing
-  const progress = isPastEstimate ? 95 : Math.min(95, (elapsedSeconds / ESTIMATED_DURATION) * 100)
+  const progress = Math.min(100, (elapsedSeconds / ESTIMATED_DURATION) * 100)
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -193,12 +188,10 @@ export function GenerationProgressExpanded({
     if (status === "pending") return "In queue..."
     if (elapsedSeconds < 30) return "Starting AI model..."
     if (elapsedSeconds < 120) return "Analyzing motion..."
-    if (elapsedSeconds < 300) return "Processing frames..."
-    if (elapsedSeconds < 540) return "Generating video..."
-    if (elapsedSeconds < 660) return "Rendering final..."
-    if (elapsedSeconds < ESTIMATED_DURATION) return "Almost done..."
-    if (elapsedSeconds < MAX_DISPLAY_TIME) return "Taking a bit longer..."
-    return "Still working on it..."
+    if (elapsedSeconds < 240) return "Processing frames..."
+    if (elapsedSeconds < 360) return "Generating video..."
+    if (elapsedSeconds < 420) return "Rendering final..."
+    return "Almost done..."
   }
 
   return (
@@ -237,7 +230,7 @@ export function GenerationProgressExpanded({
               {characterName || "Generating"}
             </span>
             <span className="font-mono text-[11px] tabular-nums text-neutral-400">
-              {isPastEstimate ? "Finishing up..." : `~${formatTime(remainingSeconds)} remaining`}
+              {remainingSeconds > 0 ? `~${formatTime(remainingSeconds)} remaining` : "Almost done..."}
             </span>
           </div>
         </div>
