@@ -99,27 +99,18 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
-  // Download the character image to pass as bytes to AI SDK
-  const imageStart = Date.now()
-  const imageResponse = await fetch(characterImageUrl)
-  if (!imageResponse.ok) {
-    throw new Error(`Failed to download character image: ${imageResponse.status} ${imageResponse.statusText}`)
-  }
-  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer())
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Character image downloaded in ${Date.now() - imageStart}ms, size: ${imageBuffer.length} bytes`)
-
   // Update run ID with a placeholder so UI knows it's processing
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
   // Generate video using AI SDK with KlingAI motion control
+  // Pass image as URL directly (already public on Vercel Blob) to avoid re-upload overhead
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
   const result = await generateVideo({
     model: gateway.video("klingai/kling-v2.6-motion-control"),
     prompt: {
-      image: imageBuffer,
-      text: "Perform the motion from the reference video",
+      image: new URL(characterImageUrl),
     },
     providerOptions: {
       klingai: {
