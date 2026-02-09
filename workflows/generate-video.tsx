@@ -26,7 +26,7 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
   const { generationId, videoUrl, characterImageUrl, characterName, userEmail } = input
 
   const workflowStartTime = Date.now()
-  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId} via AI Gateway`)
+  console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId} via AI Gateway (v51-error-logging)`)
 
   // Generate video using AI SDK + KlingAI motion control
   let videoData: Uint8Array
