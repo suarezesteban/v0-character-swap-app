@@ -730,12 +730,12 @@ export function CharacterGrid({
               <div>
                 <p className="mb-2 text-neutral-500">// ai model</p>
                 <a 
-                  href="https://fal.ai/models/fal-ai/kling-video/v2.6/standard/motion-control"
+                  href="https://vercel.com/ai-gateway/models?type=video"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-neutral-300 hover:text-white"
                 >
-                  fal.ai/kling-video/v2.6 motion-control
+                  klingai/kling-v2.6-motion-control via AI Gateway
                 </a>
                 <p className="mt-1">
                   analyzes facial landmarks, expressions, and head pose frame-by-frame from your recorded video. transfers this motion data onto the target character image while preserving their appearance.
