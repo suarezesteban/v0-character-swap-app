@@ -185,10 +185,8 @@ async function generateVideoWithAISDK(
       try { errorMsg = JSON.stringify(error) } catch { errorMsg = String(error) }
     }
     
-    // Use longer backoff for timeouts since KlingAI is probably overloaded
     const { RetryableError } = await import("workflow")
-    const retryDelay = isTimeout ? "60s" : "30s"
-    throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: retryDelay })
+    throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: "30s" })
   }
 
   const generateTime = Date.now() - generateStart
