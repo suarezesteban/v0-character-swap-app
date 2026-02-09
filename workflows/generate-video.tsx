@@ -1,3 +1,6 @@
+// Route segment config - increase maxDuration for long-running video generation
+export const maxDuration = 800
+
 /**
  * Input for the video generation workflow
  */
