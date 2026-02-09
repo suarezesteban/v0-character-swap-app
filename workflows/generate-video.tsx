@@ -147,24 +147,48 @@ async function generateVideoWithAISDK(
     })
   } catch (error) {
     const elapsed = Date.now() - generateStart
-    // Safely extract error details - some errors may not be standard Error instances
+    
+    // Extract detailed error info - check for NoVideoGeneratedError from AI SDK
     let errorMsg: string
+    let isTimeout = false
+    
     if (error instanceof Error) {
       errorMsg = error.message
-      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo Error after ${elapsed}ms: ${error.message}`)
+      isTimeout = errorMsg.includes("timeout") || errorMsg.includes("Timeout") || errorMsg.includes("timed out")
+      
+      // Log full error details
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsed}ms`)
+      console.error(`[Workflow Step] Error name: ${error.name}`)
+      console.error(`[Workflow Step] Error message: ${error.message}`)
       console.error(`[Workflow Step] Stack: ${error.stack}`)
-    } else if (error && typeof error === "object" && "message" in error) {
-      errorMsg = String((error as { message: unknown }).message)
-      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo object error after ${elapsed}ms: ${errorMsg}`)
+      
+      // Check for AI SDK specific error properties
+      const aiError = error as Error & { cause?: unknown; responses?: unknown; value?: unknown }
+      if (aiError.cause) {
+        console.error(`[Workflow Step] Error cause: ${JSON.stringify(aiError.cause, null, 2)}`)
+      }
+      if (aiError.responses) {
+        console.error(`[Workflow Step] Error responses: ${JSON.stringify(aiError.responses, null, 2)}`)
+      }
     } else {
-      errorMsg = `Unknown error type: ${typeof error}`
-      try { errorMsg = JSON.stringify(error) } catch { /* ignore */ }
-      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo unknown error after ${elapsed}ms: ${errorMsg}`)
+      // Non-Error object - enumerate all properties
+      errorMsg = `Non-Error thrown: ${typeof error}`
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsed}ms`)
+      console.error(`[Workflow Step] Error type: ${typeof error}`)
+      if (error && typeof error === "object") {
+        const keys = Object.getOwnPropertyNames(error)
+        console.error(`[Workflow Step] Error keys: ${keys.join(", ")}`)
+        for (const key of keys) {
+          try { console.error(`[Workflow Step] Error.${key}: ${JSON.stringify((error as Record<string, unknown>)[key])}`) } catch { /* ignore */ }
+        }
+      }
+      try { errorMsg = JSON.stringify(error) } catch { errorMsg = String(error) }
     }
     
-    // Throw RetryableError so workflow retries with backoff
+    // Use longer backoff for timeouts since KlingAI is probably overloaded
     const { RetryableError } = await import("workflow")
-    throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: "30s" })
+    const retryDelay = isTimeout ? "60s" : "30s"
+    throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: retryDelay })
   }
 
   const generateTime = Date.now() - generateStart
