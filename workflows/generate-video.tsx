@@ -99,6 +99,21 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
+  // Validate that both URLs are accessible before calling generateVideo
+  const [imageCheck, videoCheck] = await Promise.all([
+    fetch(characterImageUrl, { method: "HEAD" }).catch(e => ({ ok: false, status: 0, statusText: String(e) })),
+    fetch(videoUrl, { method: "HEAD" }).catch(e => ({ ok: false, status: 0, statusText: String(e) })),
+  ])
+  console.log(`[Workflow Step] [${new Date().toISOString()}] URL check - image: ${imageCheck.ok ? "OK" : `FAIL ${imageCheck.status}`}, video: ${videoCheck.ok ? "OK" : `FAIL ${videoCheck.status}`}`)
+  
+  if (!imageCheck.ok || !videoCheck.ok) {
+    const { RetryableError } = await import("workflow")
+    throw new RetryableError(
+      `Input URLs not accessible - image: ${imageCheck.ok}, video: ${videoCheck.ok}`,
+      { retryAfter: "10s" }
+    )
+  }
+
   // Update run ID with a placeholder so UI knows it's processing
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
@@ -107,26 +122,50 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
-  const result = await generateVideo({
-    model: gateway.video("klingai/kling-v2.6-motion-control"),
-    prompt: {
-      image: characterImageUrl,
-    },
-    providerOptions: {
-      klingai: {
-        // Reference motion video URL - the user's recorded video
-        videoUrl: videoUrl,
-        // Match orientation from the reference video
-        characterOrientation: "video" as const,
-        // Standard mode (cost-effective)
-        mode: "std" as const,
-        // Poll every 5 seconds for faster completion detection
-        pollIntervalMs: 5_000,
-        // Extended poll timeout since video generation takes minutes
-        pollTimeoutMs: 14 * 60 * 1000, // 14 minutes
+  let result: Awaited<ReturnType<typeof generateVideo>>
+
+  try {
+    result = await generateVideo({
+      model: gateway.video("klingai/kling-v2.6-motion-control"),
+      prompt: {
+        image: characterImageUrl,
       },
-    },
-  })
+      providerOptions: {
+        klingai: {
+          // Reference motion video URL - the user's recorded video
+          videoUrl: videoUrl,
+          // Match orientation from the reference video
+          characterOrientation: "video" as const,
+          // Standard mode (cost-effective)
+          mode: "std" as const,
+          // Poll every 5 seconds for faster completion detection
+          pollIntervalMs: 5_000,
+          // Extended poll timeout since video generation takes minutes
+          pollTimeoutMs: 14 * 60 * 1000, // 14 minutes
+        },
+      },
+    })
+  } catch (error) {
+    const elapsed = Date.now() - generateStart
+    // Safely extract error details - some errors may not be standard Error instances
+    let errorMsg: string
+    if (error instanceof Error) {
+      errorMsg = error.message
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo Error after ${elapsed}ms: ${error.message}`)
+      console.error(`[Workflow Step] Stack: ${error.stack}`)
+    } else if (error && typeof error === "object" && "message" in error) {
+      errorMsg = String((error as { message: unknown }).message)
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo object error after ${elapsed}ms: ${errorMsg}`)
+    } else {
+      errorMsg = `Unknown error type: ${typeof error}`
+      try { errorMsg = JSON.stringify(error) } catch { /* ignore */ }
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo unknown error after ${elapsed}ms: ${errorMsg}`)
+    }
+    
+    // Throw RetryableError so workflow retries with backoff
+    const { RetryableError } = await import("workflow")
+    throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: "30s" })
+  }
 
   const generateTime = Date.now() - generateStart
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideo completed in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
