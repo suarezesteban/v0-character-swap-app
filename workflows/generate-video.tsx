@@ -103,14 +103,14 @@ async function generateVideoWithAISDK(
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
   // Generate video using AI SDK with KlingAI motion control
-  // Pass image as URL directly (already public on Vercel Blob) to avoid re-upload overhead
+  // Pass image as URL string directly - avoids downloading and re-uploading the image
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
   const result = await generateVideo({
     model: gateway.video("klingai/kling-v2.6-motion-control"),
     prompt: {
-      image: new URL(characterImageUrl),
+      image: characterImageUrl,
     },
     providerOptions: {
       klingai: {
