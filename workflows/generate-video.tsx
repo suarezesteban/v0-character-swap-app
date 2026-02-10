@@ -91,24 +91,20 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
   const workflowStartTime = Date.now()
   console.log(`[Workflow] [${new Date().toISOString()}] Starting generation ${generationId} via AI Gateway`)
 
-  // Generate video using AI SDK + KlingAI motion control
-  let videoData: Uint8Array
+  // Generate video AND save to blob in a single step
+  // This avoids serializing large video bytes between steps
+  let blobUrl: string
   try {
     const generateStartTime = Date.now()
-    videoData = await generateVideoWithAISDK(generationId, videoUrl, characterImageUrl)
+    blobUrl = await generateAndSaveVideo(generationId, videoUrl, characterImageUrl)
     const generateTime = Date.now() - generateStartTime
-    console.log(`[Workflow] [${new Date().toISOString()}] Video generated in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
+    console.log(`[Workflow] [${new Date().toISOString()}] Video generated and saved in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)
   } catch (genError) {
     console.error(`[Workflow] [${new Date().toISOString()}] Video generation failed:`, genError)
     const errorMessage = genError instanceof Error ? genError.message : String(genError)
     await markGenerationFailed(generationId, errorMessage)
     return { success: false, error: errorMessage }
   }
-
-  // Save video to Vercel Blob
-  const blobStartTime = Date.now()
-  const blobUrl = await saveVideoToBlob(generationId, videoData)
-  console.log(`[Workflow] [${new Date().toISOString()}] saveVideoToBlob took ${Date.now() - blobStartTime}ms`)
 
   // Update database
   const dbStartTime = Date.now()
@@ -132,22 +128,22 @@ export async function generateVideoWorkflow(input: GenerateVideoInput) {
 // STEP FUNCTIONS (have full Node.js access)
 // ============================================
 
-async function generateVideoWithAISDK(
+async function generateAndSaveVideo(
   generationId: number,
   videoUrl: string,
   characterImageUrl: string,
-): Promise<Uint8Array> {
+): Promise<string> {
   "use step"
 
   const stepStartTime = Date.now()
-  console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideoWithAISDK starting...`)
+  console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
   const { experimental_generateVideo: generateVideo } = await import("ai")
   const { createGateway } = await import("@ai-sdk/gateway")
+  const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
   // Use default gateway - the step already has maxDuration=800 via vercel.json
-  // No need for undici Agent/dispatcher inside workflow steps
   const gateway = createGateway()
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
@@ -157,7 +153,6 @@ async function generateVideoWithAISDK(
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
   // Generate video using AI SDK with KlingAI motion control
-  // Pass image as URL string directly - avoids downloading and re-uploading the image
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
@@ -170,15 +165,10 @@ async function generateVideoWithAISDK(
       },
       providerOptions: {
         klingai: {
-          // Reference motion video URL - the user's recorded video
           videoUrl: videoUrl,
-          // Match orientation from the reference video
           characterOrientation: "video" as const,
-          // Standard mode (cost-effective)
           mode: "std" as const,
-          // Poll every 5 seconds for faster completion detection
           pollIntervalMs: 5_000,
-          // Extended poll timeout since video generation takes minutes
           pollTimeoutMs: 14 * 60 * 1000, // 14 minutes
         },
       },
@@ -197,30 +187,17 @@ async function generateVideoWithAISDK(
     throw new Error("No videos were generated")
   }
 
-  // Return the first video's raw bytes
+  // Save video bytes directly to Vercel Blob (avoid serializing large bytes between steps)
   const videoBytes = result.videos[0].uint8Array
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Video size: ${videoBytes.length} bytes, total step time: ${Date.now() - stepStartTime}ms`)
-  
-  return videoBytes
-}
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Video size: ${videoBytes.length} bytes, saving to Blob...`)
 
-async function saveVideoToBlob(generationId: number, videoData: Uint8Array): Promise<string> {
-  "use step"
-
-  const stepStartTime = Date.now()
-  const { put } = await import("@vercel/blob")
-
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Saving ${videoData.length} bytes to Vercel Blob`)
-
-  const putStartTime = Date.now()
-  const { url } = await put(`generations/${generationId}-${Date.now()}.mp4`, videoData, {
+  const { url: blobUrl } = await put(`generations/${generationId}-${Date.now()}.mp4`, videoBytes, {
     access: "public",
     contentType: "video/mp4",
   })
-  console.log(`[Workflow Step] [${new Date().toISOString()}] put() to Vercel Blob took ${Date.now() - putStartTime}ms`)
 
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Saved to blob: ${url}, total step time: ${Date.now() - stepStartTime}ms`)
-  return url
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Saved to blob: ${blobUrl}, total step time: ${Date.now() - stepStartTime}ms`)
+  return blobUrl
 }
 
 async function markGenerationComplete(generationId: number, videoUrl: string): Promise<void> {
