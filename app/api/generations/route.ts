@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getUserGenerations, createPendingGeneration } from "@/lib/db"
 import { verifySession } from "@/lib/auth"
+import { toWorkflowErrorObject } from "@/lib/workflow-errors"
 
 export async function GET() {
   try {
@@ -11,8 +12,15 @@ export async function GET() {
     }
 
     const generations = await getUserGenerations(session.user.id)
+    const generationsWithStructuredErrors = generations.map((generation) => ({
+      ...generation,
+      error:
+        generation.error_message != null
+          ? toWorkflowErrorObject(generation.error_message)
+          : null,
+    }))
 
-    return NextResponse.json({ generations }, {
+    return NextResponse.json({ generations: generationsWithStructuredErrors }, {
       headers: {
         'Cache-Control': 'private, max-age=0, stale-while-revalidate=10',
       }

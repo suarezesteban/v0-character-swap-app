@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { start } from "workflow/api"
 import { createGeneration, updateGenerationStartProcessing } from "@/lib/db"
+import { toWorkflowErrorObject } from "@/lib/workflow-errors"
 import { generateVideoWorkflow } from "@/workflows/generate-video"
 
 export async function POST(request: NextRequest) {
@@ -65,8 +66,10 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Generate error:", error)
+    const message =
+      error instanceof Error ? error.message : "Failed to start video generation"
     return NextResponse.json(
-      { error: "Failed to start video generation" },
+      { error: toWorkflowErrorObject(message) },
       { status: 500 }
     )
   }

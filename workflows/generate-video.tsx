@@ -9,6 +9,69 @@ export interface GenerateVideoInput {
   userEmail?: string
 }
 
+type ProviderErrorPayload = {
+  kind: "provider_error"
+  provider: "kling"
+  model: string
+  code: string
+  summary: string
+  details: string
+}
+
+const PROVIDER_ERROR_PREFIX = "WF_PROVIDER_ERROR::"
+
+async function serializeUnknownError(error: unknown): Promise<string> {
+  if (error instanceof Error) {
+    return error.stack ?? error.message
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "then" in error &&
+    typeof (error as { then?: unknown }).then === "function"
+  ) {
+    try {
+      const resolved = await (error as Promise<unknown>)
+      return `Promise rejection: ${await serializeUnknownError(resolved)}`
+    } catch (promiseError) {
+      return `Promise rejection: ${await serializeUnknownError(promiseError)}`
+    }
+  }
+
+  if (typeof error === "string") {
+    return error
+  }
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
+function buildProviderErrorPayload(details: string): ProviderErrorPayload {
+  if (details.includes("GatewayInternalServerError")) {
+    return {
+      kind: "provider_error",
+      provider: "kling",
+      model: "klingai/kling-v2.6-motion-control",
+      code: "GATEWAY_INTERNAL_SERVER_ERROR",
+      summary: "AI Gateway/provider returned an internal server error.",
+      details,
+    }
+  }
+
+  return {
+    kind: "provider_error",
+    provider: "kling",
+    model: "klingai/kling-v2.6-motion-control",
+    code: "PROVIDER_ERROR",
+    summary: "Provider request failed.",
+    details,
+  }
+}
+
 /**
  * Durable workflow for video generation using AI SDK + AI Gateway
  * 
@@ -107,26 +170,33 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
-  const result = await generateVideo({
-    model: gateway.video("klingai/kling-v2.6-motion-control"),
-    prompt: {
-      image: characterImageUrl,
-    },
-    providerOptions: {
-      klingai: {
-        // Reference motion video URL - the user's recorded video
-        videoUrl: videoUrl,
-        // Match orientation from the reference video
-        characterOrientation: "video" as const,
-        // Standard mode (cost-effective)
-        mode: "std" as const,
-        // Poll every 5 seconds for faster completion detection
-        pollIntervalMs: 5_000,
-        // Extended poll timeout since video generation takes minutes
-        pollTimeoutMs: 14 * 60 * 1000, // 14 minutes
+  let result: Awaited<ReturnType<typeof generateVideo>>
+  try {
+    result = await generateVideo({
+      model: gateway.video("klingai/kling-v2.6-motion-control"),
+      prompt: {
+        image: characterImageUrl,
       },
-    },
-  })
+      providerOptions: {
+        klingai: {
+          // Reference motion video URL - the user's recorded video
+          videoUrl: videoUrl,
+          // Match orientation from the reference video
+          characterOrientation: "video" as const,
+          // Standard mode (cost-effective)
+          mode: "std" as const,
+          // Poll every 5 seconds for faster completion detection
+          pollIntervalMs: 5_000,
+          // Extended poll timeout since video generation takes minutes
+          pollTimeoutMs: 14 * 60 * 1000, // 14 minutes
+        },
+      },
+    })
+  } catch (error) {
+    const details = await serializeUnknownError(error)
+    const payload = buildProviderErrorPayload(details)
+    throw new Error(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
+  }
 
   const generateTime = Date.now() - generateStart
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateVideo completed in ${generateTime}ms (${(generateTime / 1000).toFixed(1)}s)`)

@@ -16,6 +16,15 @@ interface Generation {
   created_at: string
   completed_at: string | null
   error_message: string | null
+  error?: {
+    kind: string
+    message: string
+    code?: string
+    provider?: string
+    model?: string
+    summary?: string
+    details?: string
+  } | null
 }
 
 interface FailedGenerationProps {
@@ -24,31 +33,36 @@ interface FailedGenerationProps {
 }
 
 // Map technical errors to user-friendly messages
-function getUserFriendlyError(errorMessage: string | null): string {
-  if (!errorMessage) return "Something went wrong. Please try again."
+function getUserFriendlyError(errorMessage: string | null, structuredError?: Generation["error"]): string {
+  const message = structuredError?.summary ?? structuredError?.message ?? errorMessage
+  if (structuredError?.kind === "provider_error" && message) {
+    return message
+  }
+
+  if (!message) return "Something went wrong. Please try again."
   
   // Motion/movement related errors - fal.ai requires 2+ seconds of continuous motion
-  if (errorMessage.toLowerCase().includes("motion") || errorMessage.toLowerCase().includes("continuous")) {
+  if (message.toLowerCase().includes("motion") || message.toLowerCase().includes("continuous")) {
     return "Video needs at least 2 seconds of continuous movement. Try recording for 3+ seconds while moving your head or body steadily."
   }
   
   // Duration errors
-  if (errorMessage.toLowerCase().includes("duration") || errorMessage.toLowerCase().includes("short") || errorMessage.toLowerCase().includes("2 second")) {
+  if (message.toLowerCase().includes("duration") || message.toLowerCase().includes("short") || message.toLowerCase().includes("2 second")) {
     return "Video too short. Record for at least 3 seconds with continuous movement."
   }
   
   // Face detection errors
-  if (errorMessage.toLowerCase().includes("face") || errorMessage.toLowerCase().includes("detect")) {
+  if (message.toLowerCase().includes("face") || message.toLowerCase().includes("detect")) {
     return "Make sure your face is clearly visible and well-lit in the video."
   }
   
   // Quality errors
-  if (errorMessage.toLowerCase().includes("quality") || errorMessage.toLowerCase().includes("resolution")) {
+  if (message.toLowerCase().includes("quality") || message.toLowerCase().includes("resolution")) {
     return "Try recording in better lighting conditions."
   }
   
   // Default: show original but cleaned up
-  return errorMessage.replace(/^The input was rejected,?\s*/i, "").trim() || "Something went wrong. Please try again."
+  return message.replace(/^The input was rejected,?\s*/i, "").trim() || "Something went wrong. Please try again."
 }
 
 export function FailedGeneration({ gen, onDelete }: FailedGenerationProps) {
@@ -56,7 +70,7 @@ export function FailedGeneration({ gen, onDelete }: FailedGenerationProps) {
   
   const friendlyError = gen.status === "cancelled" 
     ? "Cancelled by user" 
-    : getUserFriendlyError(gen.error_message)
+    : getUserFriendlyError(gen.error_message, gen.error)
   const shortMessage = gen.status === "cancelled" 
     ? "Cancelled" 
     : "Failed"

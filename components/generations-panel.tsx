@@ -60,6 +60,15 @@ interface Generation {
   created_at: string
   completed_at: string | null
   error_message: string | null
+  error?: {
+    kind: string
+    message: string
+    code?: string
+    provider?: string
+    model?: string
+    summary?: string
+    details?: string
+  } | null
 }
 
 interface GenerationsPanelProps {
