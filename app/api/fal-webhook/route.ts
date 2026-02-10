@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { resumeHook } from "workflow/api"
+import type { FalWebhookResult } from "@/workflows/generate-video"
 
 /**
  * Webhook endpoint called by fal.ai when video generation completes
@@ -33,7 +35,44 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log(`[fal-webhook] [${new Date().toISOString()}] Body parsed in ${Date.now() - bodyParseStart}ms:`, JSON.stringify(body, null, 2))
 
-    // Direct processing (workflow removed - using API route with maxDuration instead)
+    // If we have a hookToken, resume the workflow
+    if (hookToken) {
+      try {
+        // Build the FalWebhookResult to send to the workflow
+        const falResult: FalWebhookResult = {
+          status: body.status,
+          request_id: body.request_id,
+          payload: body.payload,
+          error: body.error,
+        }
+
+        console.log(`[fal-webhook] [${new Date().toISOString()}] About to resume workflow with token: ${hookToken}`)
+
+        // This wakes up the workflow that's waiting at `await hook`
+        const resumeStart = Date.now()
+        const result = await resumeHook(hookToken, falResult)
+        const resumeTime = Date.now() - resumeStart
+
+        console.log(`[fal-webhook] [${new Date().toISOString()}] Workflow resumed successfully, runId: ${result.runId}, resumeHook took ${resumeTime}ms`)
+        console.log(`[fal-webhook] [TIMING] Total webhook processing: ${Date.now() - webhookReceivedTime}ms`)
+
+        return NextResponse.json({
+          received: true,
+          workflowResumed: true,
+          runId: result.runId,
+        })
+      } catch (resumeError) {
+        console.error(`[fal-webhook] [${new Date().toISOString()}] Failed to resume workflow:`, resumeError)
+
+        // If workflow resume fails, fall back to direct processing
+        // This handles cases where the workflow might have timed out or failed
+        return await handleDirectProcessing(generationId, body)
+      }
+    }
+
+    // No hookToken = old-style webhook (before workflow integration)
+    // Fall back to direct processing
+    console.log(`[fal-webhook] No hookToken, using direct processing`)
     return await handleDirectProcessing(generationId, body)
   } catch (error) {
     console.error("[fal-webhook] Error:", error)

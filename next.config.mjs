@@ -1,3 +1,6 @@
+import pkg from "workflow/next"
+const { withWorkflow } = pkg
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -27,4 +30,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withWorkflow(nextConfig)

@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { start } from "workflow/api"
 import { createGeneration, updateGenerationStartProcessing } from "@/lib/db"
+import { toWorkflowErrorObject } from "@/lib/workflow-errors"
+import { generateVideoWorkflow } from "@/workflows/generate-video"
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,41 +48,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fire-and-forget: call the generate-video API route in the background
-    // This runs as a separate serverless function with maxDuration=800 (13+ min)
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : `http://localhost:${process.env.PORT || 3000}`
-
-    const headers: Record<string, string> = { "Content-Type": "application/json" }
-    // Bypass Vercel Deployment Protection for server-to-server calls
-    if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-      headers["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-    }
-
-    fetch(`${baseUrl}/api/generate-video`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        generationId,
-        videoUrl,
-        characterImageUrl,
-        characterName: characterName || undefined,
-        userEmail: sendEmail ? userEmail : undefined,
-      }),
-    }).catch((err) => {
-      console.error("[Generate] Failed to trigger background generation:", err)
-    })
+    // Start the durable workflow using workflow/api
+    // This returns immediately - the workflow runs in the background
+    const run = await start(generateVideoWorkflow, [{
+      generationId,
+      videoUrl,
+      characterImageUrl,
+      characterName: characterName || undefined,
+      userEmail: sendEmail ? userEmail : undefined,
+    }])
 
     return NextResponse.json({
       success: true,
       generationId,
+      runId: run.runId,
       message: "Video generation started",
     })
   } catch (error) {
     console.error("Generate error:", error)
+    const message =
+      error instanceof Error ? error.message : "Failed to start video generation"
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to start video generation" },
+      { error: toWorkflowErrorObject(message) },
       { status: 500 }
     )
   }
