@@ -17,14 +17,17 @@ const gateway = createGateway({
     const method = (init as RequestInit)?.method || "GET"
     const urlStr = typeof url === "string" ? url : (url as URL).toString()
     
-    console.log(`[GenerateVideo] [${ts}] Gateway request: ${method} ${urlStr.substring(0, 120)}`)
+    console.log(`[GenerateVideo] [${ts}] Gateway request: ${method} ${urlStr.substring(0, 120)} [using undici.fetch]`)
     
     const fetchStart = Date.now()
     return undiciFetch(url as string, {
       ...(init as Record<string, unknown>),
       dispatcher: new Agent({
-        headersTimeout: 15 * 60 * 1000, // 15 minutes
+        headersTimeout: 15 * 60 * 1000,
         bodyTimeout: 15 * 60 * 1000,
+        keepAliveTimeout: 15 * 60 * 1000,
+        keepAliveMaxTimeout: 15 * 60 * 1000,
+        connect: { timeout: 15 * 60 * 1000 },
       }),
     }).then(response => {
       const fetchTime = Date.now() - fetchStart
