@@ -1,6 +1,6 @@
 {
   "functions": {
-    ".well-known/workflow/v1/step": {
+    "app/.well-known/**": {
       "maxDuration": 800
     }
   }
