@@ -1,6 +1,6 @@
 {
   "functions": {
-    "app/.well-known/**": {
+    "app/**/*": {
       "maxDuration": 800
     }
   }
