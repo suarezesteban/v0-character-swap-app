@@ -140,11 +140,22 @@ async function generateAndSaveVideo(
 
   const { experimental_generateVideo: generateVideo } = await import("ai")
   const { createGateway } = await import("@ai-sdk/gateway")
+  const { Agent } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Use default gateway - the step already has maxDuration=800 via vercel.json
-  const gateway = createGateway()
+  // Video generation can take 10+ minutes. Node.js fetch has a 5-minute default timeout.
+  // Use undici Agent with extended timeouts as recommended by AI Gateway docs.
+  const gateway = createGateway({
+    fetch: (url, init) =>
+      fetch(url, {
+        ...init,
+        dispatcher: new Agent({
+          headersTimeout: 15 * 60 * 1000, // 15 minutes
+          bodyTimeout: 15 * 60 * 1000,
+        }),
+      } as RequestInit),
+  })
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
@@ -174,9 +185,12 @@ async function generateAndSaveVideo(
       },
     })
   } catch (error) {
+    const { FatalError } = await import("workflow")
     const details = await serializeUnknownError(error)
     const payload = buildProviderErrorPayload(details)
-    throw new Error(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
+    // Use FatalError to skip retries - provider errors (invalid format, internal server error)
+    // won't be fixed by retrying the same request
+    throw new FatalError(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
   }
 
   const generateTime = Date.now() - generateStart
