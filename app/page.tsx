@@ -272,12 +272,12 @@ export default function Home() {
           : "p-0"
       )}>
         {resultUrl ? (
-          <div className="relative flex h-full w-full flex-col items-center justify-center">
+          <div className="relative flex h-full w-full flex-col items-center justify-center md:flex-row">
             <div className={cn(
               "relative overflow-hidden bg-neutral-900",
-              generatedVideoAspectRatio === "9:16" && "aspect-[9/16] max-h-[calc(100vh-80px)] w-auto rounded-lg",
+              generatedVideoAspectRatio === "9:16" && "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-lg",
               generatedVideoAspectRatio === "16:9" && "aspect-video w-full max-w-[95%] rounded-lg md:max-w-[90%]",
-              generatedVideoAspectRatio === "fill" && "w-full flex-1"
+              generatedVideoAspectRatio === "fill" && "h-full w-full"
             )}>
               <video 
                 ref={mainVideoRef}
@@ -338,9 +338,8 @@ export default function Home() {
                   />
                 </div>
               )}
-            </div>
-            {/* Action buttons - below video */}
-            <div className="hidden shrink-0 items-center gap-3 py-3 md:flex">
+              {/* Action buttons - below video on mobile, overlayed on desktop */}
+              <div className="absolute bottom-16 left-1/2 hidden -translate-x-1/2 items-center gap-3 md:flex">
                 <button
                   disabled={isDownloading}
                   onClick={handleDownload}
@@ -387,6 +386,7 @@ export default function Home() {
                   </button>
                 )}
               </div>
+            </div>
             {/* Mobile action buttons - below video */}
             <div className="flex items-center justify-center gap-3 py-4 md:hidden">
               <button
