@@ -9,69 +9,6 @@ export interface GenerateVideoInput {
   userEmail?: string
 }
 
-type ProviderErrorPayload = {
-  kind: "provider_error"
-  provider: "kling"
-  model: string
-  code: string
-  summary: string
-  details: string
-}
-
-const PROVIDER_ERROR_PREFIX = "WF_PROVIDER_ERROR::"
-
-async function serializeUnknownError(error: unknown): Promise<string> {
-  if (error instanceof Error) {
-    return error.stack ?? error.message
-  }
-
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "then" in error &&
-    typeof (error as { then?: unknown }).then === "function"
-  ) {
-    try {
-      const resolved = await (error as Promise<unknown>)
-      return `Promise rejection: ${await serializeUnknownError(resolved)}`
-    } catch (promiseError) {
-      return `Promise rejection: ${await serializeUnknownError(promiseError)}`
-    }
-  }
-
-  if (typeof error === "string") {
-    return error
-  }
-
-  try {
-    return JSON.stringify(error)
-  } catch {
-    return String(error)
-  }
-}
-
-function buildProviderErrorPayload(details: string): ProviderErrorPayload {
-  if (details.includes("GatewayInternalServerError")) {
-    return {
-      kind: "provider_error",
-      provider: "kling",
-      model: "klingai/kling-v2.6-motion-control",
-      code: "GATEWAY_INTERNAL_SERVER_ERROR",
-      summary: "AI Gateway/provider returned an internal server error.",
-      details,
-    }
-  }
-
-  return {
-    kind: "provider_error",
-    provider: "kling",
-    model: "klingai/kling-v2.6-motion-control",
-    code: "PROVIDER_ERROR",
-    summary: "Provider request failed.",
-    details,
-  }
-}
-
 /**
  * Durable workflow for video generation using AI SDK + AI Gateway
  * 
@@ -162,6 +99,21 @@ async function generateVideoWithAISDK(
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
+  // Validate that both URLs are accessible before calling generateVideo
+  const [imageCheck, videoCheck] = await Promise.all([
+    fetch(characterImageUrl, { method: "HEAD" }).catch(e => ({ ok: false, status: 0, statusText: String(e) })),
+    fetch(videoUrl, { method: "HEAD" }).catch(e => ({ ok: false, status: 0, statusText: String(e) })),
+  ])
+  console.log(`[Workflow Step] [${new Date().toISOString()}] URL check - image: ${imageCheck.ok ? "OK" : `FAIL ${imageCheck.status}`}, video: ${videoCheck.ok ? "OK" : `FAIL ${videoCheck.status}`}`)
+  
+  if (!imageCheck.ok || !videoCheck.ok) {
+    const { RetryableError } = await import("workflow")
+    throw new RetryableError(
+      `Input URLs not accessible - image: ${imageCheck.ok}, video: ${videoCheck.ok}`,
+      { retryAfter: "10s" }
+    )
+  }
+
   // Update run ID with a placeholder so UI knows it's processing
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
@@ -171,6 +123,7 @@ async function generateVideoWithAISDK(
 
   const generateStart = Date.now()
   let result: Awaited<ReturnType<typeof generateVideo>>
+
   try {
     result = await generateVideo({
       model: gateway.video("klingai/kling-v2.6-motion-control"),
@@ -193,9 +146,25 @@ async function generateVideoWithAISDK(
       },
     })
   } catch (error) {
-    const details = await serializeUnknownError(error)
-    const payload = buildProviderErrorPayload(details)
-    throw new Error(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
+    const elapsed = Date.now() - generateStart
+    // Safely extract error details - some errors may not be standard Error instances
+    let errorMsg: string
+    if (error instanceof Error) {
+      errorMsg = error.message
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo Error after ${elapsed}ms: ${error.message}`)
+      console.error(`[Workflow Step] Stack: ${error.stack}`)
+    } else if (error && typeof error === "object" && "message" in error) {
+      errorMsg = String((error as { message: unknown }).message)
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo object error after ${elapsed}ms: ${errorMsg}`)
+    } else {
+      errorMsg = `Unknown error type: ${typeof error}`
+      try { errorMsg = JSON.stringify(error) } catch { /* ignore */ }
+      console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo unknown error after ${elapsed}ms: ${errorMsg}`)
+    }
+    
+    // Throw RetryableError so workflow retries with backoff
+    const { RetryableError } = await import("workflow")
+    throw new RetryableError(`Video generation failed: ${errorMsg}`, { retryAfter: "30s" })
   }
 
   const generateTime = Date.now() - generateStart

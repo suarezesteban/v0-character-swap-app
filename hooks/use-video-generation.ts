@@ -23,21 +23,6 @@ interface UseVideoGenerationReturn {
   ) => void
 }
 
-function getApiErrorMessage(error: unknown): string {
-  if (typeof error === "string") {
-    return error
-  }
-
-  if (typeof error === "object" && error !== null) {
-    const maybeMessage = (error as { message?: unknown }).message
-    if (typeof maybeMessage === "string") {
-      return maybeMessage
-    }
-  }
-
-  return "Failed to start generation"
-}
-
 // Helper to validate image dimensions
 async function validateImageDimensions(src: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -157,7 +142,7 @@ export function useVideoGeneration({
 
         if (!startResponse.ok) {
           const errorData = await startResponse.json()
-          throw new Error(getApiErrorMessage(errorData.error))
+          throw new Error(errorData.error || "Failed to start generation")
         }
 
         // Refresh to show "processing" status
