@@ -272,7 +272,7 @@ export default function Home() {
           : "p-0"
       )}>
         {resultUrl ? (
-          <div className="relative flex h-full w-full flex-col items-center justify-center md:flex-row">
+          <div className="relative flex h-full w-full flex-col items-center justify-center">
             <div className={cn(
               "relative overflow-hidden bg-neutral-900",
               generatedVideoAspectRatio === "9:16" && "aspect-[9/16] h-full max-h-[calc(100%-56px)] w-auto rounded-lg",

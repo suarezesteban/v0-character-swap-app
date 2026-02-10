@@ -9,17 +9,15 @@ import { createGeneration, updateGenerationStartProcessing, updateGenerationComp
 // 13+ minutes - enough for KlingAI to finish
 export const maxDuration = 800
 
-// Custom gateway with extended timeouts per official docs:
-// https://vercel.com/docs/ai-gateway/capabilities/video-generation
+// Custom gateway with extended timeouts (matching Shaper's working example)
+const longTimeoutAgent = new Agent({
+  headersTimeout: 15 * 60 * 1000, // 15 minutes
+  bodyTimeout: 15 * 60 * 1000,
+})
+
 const gateway = createGateway({
   fetch: (url, init) =>
-    fetch(url, {
-      ...init,
-      dispatcher: new Agent({
-        headersTimeout: 15 * 60 * 1000, // 15 minutes
-        bodyTimeout: 15 * 60 * 1000,
-      }),
-    } as RequestInit),
+    fetch(url, { ...init, dispatcher: longTimeoutAgent } as any),
 })
 
 async function runVideoGeneration(params: {
