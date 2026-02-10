@@ -1,78 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { resumeHook } from "workflow/api"
-import type { FalWebhookResult } from "@/workflows/generate-video"
 
 /**
- * Webhook endpoint called by fal.ai when video generation completes
- *
- * This endpoint bridges fal.ai webhooks with Vercel Workflow:
- * 1. fal.ai calls this endpoint when processing completes
- * 2. We extract the hookToken from the query params
- * 3. We call resumeHook() to wake up the waiting workflow
- * 4. The workflow then handles saving to Blob, updating DB, sending email
- *
- * fal.ai sends:
- * - status: "OK" or "ERROR"
- * - request_id: the fal job id
- * - payload: { video: { url: string } } on success
- * - error: string on failure
+ * Legacy webhook endpoint for fal.ai callbacks
+ * Now using direct API route for video generation, but keeping this
+ * for any in-flight fal.ai jobs that may still call back.
  */
 export async function POST(request: NextRequest) {
-  const webhookReceivedTime = Date.now()
-  
   try {
     const generationId = request.nextUrl.searchParams.get("generationId")
-    const hookToken = request.nextUrl.searchParams.get("hookToken")
-
-    console.log(`[fal-webhook] [${new Date().toISOString()}] Received callback for generation ${generationId}, hookToken: ${hookToken}`)
 
     if (!generationId) {
-      console.error("[fal-webhook] Missing generationId")
       return NextResponse.json({ error: "Missing generationId" }, { status: 400 })
     }
 
-    const bodyParseStart = Date.now()
     const body = await request.json()
-    console.log(`[fal-webhook] [${new Date().toISOString()}] Body parsed in ${Date.now() - bodyParseStart}ms:`, JSON.stringify(body, null, 2))
-
-    // If we have a hookToken, resume the workflow
-    if (hookToken) {
-      try {
-        // Build the FalWebhookResult to send to the workflow
-        const falResult: FalWebhookResult = {
-          status: body.status,
-          request_id: body.request_id,
-          payload: body.payload,
-          error: body.error,
-        }
-
-        console.log(`[fal-webhook] [${new Date().toISOString()}] About to resume workflow with token: ${hookToken}`)
-
-        // This wakes up the workflow that's waiting at `await hook`
-        const resumeStart = Date.now()
-        const result = await resumeHook(hookToken, falResult)
-        const resumeTime = Date.now() - resumeStart
-
-        console.log(`[fal-webhook] [${new Date().toISOString()}] Workflow resumed successfully, runId: ${result.runId}, resumeHook took ${resumeTime}ms`)
-        console.log(`[fal-webhook] [TIMING] Total webhook processing: ${Date.now() - webhookReceivedTime}ms`)
-
-        return NextResponse.json({
-          received: true,
-          workflowResumed: true,
-          runId: result.runId,
-        })
-      } catch (resumeError) {
-        console.error(`[fal-webhook] [${new Date().toISOString()}] Failed to resume workflow:`, resumeError)
-
-        // If workflow resume fails, fall back to direct processing
-        // This handles cases where the workflow might have timed out or failed
-        return await handleDirectProcessing(generationId, body)
-      }
-    }
-
-    // No hookToken = old-style webhook (before workflow integration)
-    // Fall back to direct processing
-    console.log(`[fal-webhook] No hookToken, using direct processing`)
     return await handleDirectProcessing(generationId, body)
   } catch (error) {
     console.error("[fal-webhook] Error:", error)
