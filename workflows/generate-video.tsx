@@ -138,24 +138,19 @@ async function generateAndSaveVideo(
   const stepStartTime = Date.now()
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
-  const { experimental_generateVideo: generateVideo } = await import("ai")
-  const { createGateway } = await import("@ai-sdk/gateway")
-  const { Agent } = await import("undici")
+  const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
+  const { Agent, setGlobalDispatcher } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
   // Video generation can take 10+ minutes. Node.js fetch has a 5-minute default timeout.
-  // Use undici Agent with extended timeouts as recommended by AI Gateway docs.
-  const gateway = createGateway({
-    fetch: (url, init) =>
-      fetch(url, {
-        ...init,
-        dispatcher: new Agent({
-          headersTimeout: 15 * 60 * 1000, // 15 minutes
-          bodyTimeout: 15 * 60 * 1000,
-        }),
-      } as RequestInit),
-  })
+  // Set global dispatcher so ALL fetch calls in this step use extended timeouts.
+  setGlobalDispatcher(new Agent({
+    headersTimeout: 15 * 60 * 1000, // 15 minutes
+    bodyTimeout: 15 * 60 * 1000,
+  }))
+
+  const gateway = createGateway()
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
