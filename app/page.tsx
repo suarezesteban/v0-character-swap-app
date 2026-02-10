@@ -720,6 +720,16 @@ export default function Home() {
         </div>
       )}
 
+      {/* Creator credit - always visible */}
+      <a
+        href="https://x.com/EstebanSuarez"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="pointer-events-auto absolute bottom-2 left-2 z-40 font-mono text-[9px] text-neutral-600 transition-colors hover:text-neutral-400 md:bottom-3 md:left-3 md:text-[10px]"
+      >
+        created by estebansuarez
+      </a>
+
       {/* Expanded Character Image Overlay */}
       {expandedCharacter && (
         <div 
