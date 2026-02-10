@@ -144,20 +144,11 @@ async function generateVideoWithAISDK(
 
   const { experimental_generateVideo: generateVideo } = await import("ai")
   const { createGateway } = await import("@ai-sdk/gateway")
-  const { Agent } = await import("undici")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Custom gateway with extended timeouts for video generation (can take 10+ minutes)
-  const gateway = createGateway({
-    fetch: (url, init) =>
-      fetch(url, {
-        ...init,
-        dispatcher: new Agent({
-          headersTimeout: 15 * 60 * 1000,
-          bodyTimeout: 15 * 60 * 1000,
-        }),
-      } as RequestInit),
-  })
+  // Use default gateway - the step already has maxDuration=800 via vercel.json
+  // No need for undici Agent/dispatcher inside workflow steps
+  const gateway = createGateway()
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
