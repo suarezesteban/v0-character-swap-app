@@ -1,0 +1,7 @@
+{
+  "functions": {
+    ".well-known/workflow/v1/step": {
+      "maxDuration": 800
+    }
+  }
+}
