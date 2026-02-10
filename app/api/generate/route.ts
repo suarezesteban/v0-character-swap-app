@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { after } from "next/server"
 import { experimental_generateVideo as generateVideo } from "ai"
 import { createGateway } from "@ai-sdk/gateway"
-import { Agent } from "undici"
+import { Agent, fetch as undiciFetch } from "undici"
 import { put } from "@vercel/blob"
 import { createGeneration, updateGenerationStartProcessing, updateGenerationComplete, updateGenerationFailed, updateGenerationRunId } from "@/lib/db"
 
@@ -20,16 +20,16 @@ const gateway = createGateway({
     console.log(`[GenerateVideo] [${ts}] Gateway request: ${method} ${urlStr.substring(0, 120)}`)
     
     const fetchStart = Date.now()
-    return fetch(url, {
-      ...init,
+    return undiciFetch(url as string, {
+      ...(init as Record<string, unknown>),
       dispatcher: new Agent({
         headersTimeout: 15 * 60 * 1000, // 15 minutes
         bodyTimeout: 15 * 60 * 1000,
       }),
-    } as RequestInit).then(response => {
+    }).then(response => {
       const fetchTime = Date.now() - fetchStart
       console.log(`[GenerateVideo] [${new Date().toISOString()}] Gateway response: ${response.status} in ${(fetchTime / 1000).toFixed(1)}s`)
-      return response
+      return response as unknown as Response
     })
   },
 })
