@@ -76,20 +76,29 @@ async function runVideoGeneration(params: {
         // Success - break out of retry loop
         break
       } catch (retryError) {
-        const isSocketError = retryError instanceof Error && (
-          retryError.message.includes("other side closed") ||
-          retryError.message.includes("socket") ||
-          retryError.message.includes("ECONNRESET") ||
-          retryError.message.includes("Cannot connect to API")
-        )
-        const causeIsSocket = retryError instanceof Error && retryError.cause instanceof Error && (
-          retryError.cause.message.includes("other side closed") ||
-          retryError.cause.message.includes("socket")
-        )
+        // Walk the full cause chain to find socket/connection errors
+        // Error structure: GatewayResponseError -> AI_APICallError -> SocketError
+        const isRetryable = (() => {
+          let err: unknown = retryError
+          while (err instanceof Error) {
+            if (
+              err.message.includes("other side closed") ||
+              err.message.includes("socket") ||
+              err.message.includes("ECONNRESET") ||
+              err.message.includes("Cannot connect to API") ||
+              err.message.includes("Gateway request failed") ||
+              (err as { isRetryable?: boolean }).isRetryable === true
+            ) {
+              return true
+            }
+            err = err.cause
+          }
+          return false
+        })()
 
-        if ((isSocketError || causeIsSocket) && attempt < MAX_RETRIES) {
-          const waitSec = attempt * 5
-          console.warn(`[GenerateVideo] [${new Date().toISOString()}] Gateway connection closed on attempt ${attempt}. Retrying in ${waitSec}s...`)
+        if (isRetryable && attempt < MAX_RETRIES) {
+          const waitSec = attempt * 10
+          console.warn(`[GenerateVideo] [${new Date().toISOString()}] Gateway error on attempt ${attempt}. Retrying in ${waitSec}s...`)
           await new Promise(resolve => setTimeout(resolve, waitSec * 1000))
           continue
         }
