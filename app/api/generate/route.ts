@@ -9,7 +9,12 @@ import { createGeneration, updateGenerationStartProcessing, updateGenerationComp
 // 13+ minutes - enough for KlingAI to finish
 export const maxDuration = 800
 
-// Custom gateway with extended timeouts and request logging
+// Single reusable agent with extended timeouts (per AI Gateway team recommendation)
+const longTimeoutAgent = new Agent({
+  headersTimeout: 15 * 60 * 1000, // 15 minutes
+  bodyTimeout: 15 * 60 * 1000,
+})
+
 const gateway = createGateway({
   fetch: async (url, init) => {
     const ts = new Date().toISOString()
@@ -21,10 +26,7 @@ const gateway = createGateway({
     const fetchStart = Date.now()
     const response = await fetch(url, {
       ...init,
-      dispatcher: new Agent({
-        headersTimeout: 15 * 60 * 1000,
-        bodyTimeout: 15 * 60 * 1000,
-      }),
+      dispatcher: longTimeoutAgent,
     } as RequestInit)
     
     const fetchTime = Date.now() - fetchStart
@@ -49,23 +51,57 @@ async function runVideoGeneration(params: {
   await updateGenerationRunId(generationId, `direct-${generationId}`)
 
   try {
-    console.log(`[GenerateVideo] [${new Date().toISOString()}] Calling generateVideo...`)
+    const MAX_RETRIES = 3
+    let result: Awaited<ReturnType<typeof generateVideo>> | null = null
 
-    const result = await generateVideo({
-      model: gateway.video("klingai/kling-v2.6-motion-control"),
-      prompt: {
-        image: characterImageUrl,
-      },
-      providerOptions: {
-        klingai: {
-          videoUrl: videoUrl,
-          characterOrientation: "video" as const,
-          mode: "std" as const,
-          pollIntervalMs: 5_000,
-          pollTimeoutMs: 14 * 60 * 1000,
-        },
-      },
-    })
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[GenerateVideo] [${new Date().toISOString()}] Calling generateVideo (attempt ${attempt}/${MAX_RETRIES})...`)
+
+        result = await generateVideo({
+          model: gateway.video("klingai/kling-v2.6-motion-control"),
+          prompt: {
+            image: characterImageUrl,
+          },
+          providerOptions: {
+            klingai: {
+              videoUrl: videoUrl,
+              characterOrientation: "video" as const,
+              mode: "std" as const,
+              pollTimeoutMs: 12 * 60 * 1000,
+            },
+          },
+        })
+
+        // Success - break out of retry loop
+        break
+      } catch (retryError) {
+        const isSocketError = retryError instanceof Error && (
+          retryError.message.includes("other side closed") ||
+          retryError.message.includes("socket") ||
+          retryError.message.includes("ECONNRESET") ||
+          retryError.message.includes("Cannot connect to API")
+        )
+        const causeIsSocket = retryError instanceof Error && retryError.cause instanceof Error && (
+          retryError.cause.message.includes("other side closed") ||
+          retryError.cause.message.includes("socket")
+        )
+
+        if ((isSocketError || causeIsSocket) && attempt < MAX_RETRIES) {
+          const waitSec = attempt * 5
+          console.warn(`[GenerateVideo] [${new Date().toISOString()}] Gateway connection closed on attempt ${attempt}. Retrying in ${waitSec}s...`)
+          await new Promise(resolve => setTimeout(resolve, waitSec * 1000))
+          continue
+        }
+
+        // Not retryable or last attempt - rethrow
+        throw retryError
+      }
+    }
+
+    if (!result) {
+      throw new Error("generateVideo returned no result after all retries")
+    }
 
     const generateTime = Date.now() - startTime
     console.log(`[GenerateVideo] [${new Date().toISOString()}] generateVideo completed in ${(generateTime / 1000).toFixed(1)}s, ${result.videos.length} video(s)`)

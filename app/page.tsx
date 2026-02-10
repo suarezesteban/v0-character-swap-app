@@ -275,7 +275,7 @@ export default function Home() {
           <div className="relative flex h-full w-full flex-col items-center justify-center md:flex-row">
             <div className={cn(
               "relative overflow-hidden bg-neutral-900",
-              generatedVideoAspectRatio === "9:16" && "aspect-[9/16] h-full max-h-[85vh] w-auto rounded-lg",
+              generatedVideoAspectRatio === "9:16" && "aspect-[9/16] h-full max-h-[calc(100%-56px)] w-auto rounded-lg",
               generatedVideoAspectRatio === "16:9" && "aspect-video w-full max-w-[95%] rounded-lg md:max-w-[90%]",
               generatedVideoAspectRatio === "fill" && "h-full w-full"
             )}>
@@ -338,57 +338,9 @@ export default function Home() {
                   />
                 </div>
               )}
-              {/* Action buttons - below video on mobile, overlayed on desktop */}
-              <div className="absolute bottom-16 left-1/2 hidden -translate-x-1/2 items-center gap-3 md:flex">
-                <button
-                  disabled={isDownloading}
-                  onClick={handleDownload}
-                  className="flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl transition-all hover:bg-neutral-100 active:scale-95 disabled:opacity-70"
-                >
-                  {isDownloading ? (
-                    <>
-                      <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      {Math.round(downloadProgress * 100)}%
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Download
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="whitespace-nowrap rounded-lg bg-white/90 px-5 py-2.5 font-sans text-[13px] font-medium text-black shadow-xl backdrop-blur-md transition-all hover:bg-white active:scale-95"
-                >
-                  New Video
-                </button>
-                {/* PiP toggle button - desktop */}
-                {(sourceVideoUrl || recordedVideoUrl) && (
-                  <button
-                    onClick={() => setShowPip(!showPip)}
-                    className={`flex items-center gap-2 rounded-lg px-4 py-2.5 font-sans text-[13px] font-medium shadow-xl backdrop-blur-md transition-all active:scale-95 ${
-                      showPip 
-                        ? "bg-white text-black hover:bg-neutral-100" 
-                        : "bg-white/90 text-black hover:bg-white"
-                    }`}
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <rect x="2" y="3" width="20" height="14" rx="2" />
-                      <rect x="12" y="10" width="8" height="5" rx="1" />
-                    </svg>
-                    {showPip ? "PiP on" : "PiP off"}
-                  </button>
-                )}
-              </div>
             </div>
-            {/* Mobile action buttons - below video */}
-            <div className="flex items-center justify-center gap-3 py-4 md:hidden">
+            {/* Action buttons - below video on all screen sizes */}
+            <div className="flex shrink-0 items-center justify-center gap-3 py-3">
               <button
                 disabled={isDownloading}
                 onClick={handleDownload}
@@ -417,21 +369,21 @@ export default function Home() {
               >
                 New Video
               </button>
-              {/* PiP toggle button - mobile */}
+              {/* PiP toggle button */}
               {(sourceVideoUrl || recordedVideoUrl) && (
                 <button
                   onClick={() => setShowPip(!showPip)}
                   className={`flex items-center gap-2 rounded-lg px-4 py-2.5 font-sans text-[13px] font-medium shadow-lg transition-all active:scale-95 ${
                     showPip 
-                      ? "bg-white text-black" 
-                      : "bg-white/90 text-black"
+                      ? "bg-white text-black hover:bg-neutral-100" 
+                      : "bg-white/90 text-black hover:bg-white"
                   }`}
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <rect x="2" y="3" width="20" height="14" rx="2" />
                     <rect x="12" y="10" width="8" height="5" rx="1" />
                   </svg>
-                  {showPip ? "PiP" : "PiP"}
+                  {showPip ? "PiP on" : "PiP off"}
                 </button>
               )}
             </div>
