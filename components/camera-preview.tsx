@@ -472,7 +472,15 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
           </div>
         )}
 
-
+        {/* Creator credit */}
+        <a 
+          href="https://x.com/EstebanSuarez"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-2 right-2 font-mono text-[9px] text-neutral-600 transition-colors hover:text-neutral-400 md:bottom-3 md:right-3 md:text-[10px]"
+        >
+          created by estebansuarez
+        </a>
       </div>
     </div>
   )
