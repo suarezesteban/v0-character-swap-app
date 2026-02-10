@@ -3,7 +3,7 @@
     "app/api/generate-video/route.ts": {
       "maxDuration": 800
     },
-    ".well-known/workflow/v1/step": {
+    "app/.well-known/workflow/v1/step/route.js": {
       "maxDuration": 800
     }
   }
