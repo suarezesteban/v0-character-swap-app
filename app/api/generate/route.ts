@@ -51,9 +51,15 @@ export async function POST(request: NextRequest) {
       ? `https://${process.env.VERCEL_URL}`
       : `http://localhost:${process.env.PORT || 3000}`
 
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    // Bypass Vercel Deployment Protection for server-to-server calls
+    if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+      headers["x-vercel-protection-bypass"] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
+    }
+
     fetch(`${baseUrl}/api/generate-video`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         generationId,
         videoUrl,
