@@ -2,18 +2,21 @@ import { type NextRequest, NextResponse } from "next/server"
 import { after } from "next/server"
 import { experimental_generateVideo as generateVideo } from "ai"
 import { createGateway } from "@ai-sdk/gateway"
-import { Agent } from "undici"
+import { Agent, setGlobalDispatcher } from "undici"
 import { put } from "@vercel/blob"
 import { createGeneration, updateGenerationStartProcessing, updateGenerationComplete, updateGenerationFailed, updateGenerationRunId } from "@/lib/db"
 
 // 13+ minutes - enough for KlingAI to finish
 export const maxDuration = 800
 
-// Custom gateway with extended timeouts (matching Shaper's working example)
+// Set the global dispatcher so ALL fetch() calls use extended timeouts
+// This ensures Node's built-in fetch() respects our timeout settings
+// even if passing `dispatcher` as an option is ignored in this runtime
 const longTimeoutAgent = new Agent({
   headersTimeout: 15 * 60 * 1000, // 15 minutes
   bodyTimeout: 15 * 60 * 1000,
 })
+setGlobalDispatcher(longTimeoutAgent)
 
 const gateway = createGateway({
   fetch: (url, init) =>
@@ -143,18 +146,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Use after() to run video generation AFTER sending the response
-    // This keeps the serverless function alive for up to maxDuration (800s)
-    // while the client gets an immediate response
-    after(
-      runVideoGeneration({
+    // Use after() with a callback function (not a Promise) to run video generation
+    // AFTER the response is sent. This ensures the generation starts cleanly
+    // after the HTTP response cycle completes.
+    after(async () => {
+      await runVideoGeneration({
         generationId,
         videoUrl,
         characterImageUrl,
         characterName: characterName || undefined,
         userEmail: sendEmail ? userEmail : undefined,
       })
-    )
+    })
 
     return NextResponse.json({
       success: true,
