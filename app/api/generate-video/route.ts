@@ -8,16 +8,32 @@ import { updateGenerationComplete, updateGenerationFailed, updateGenerationRunId
 // 13+ minutes - enough for KlingAI to finish
 export const maxDuration = 800
 
-// Custom gateway with extended timeouts for video generation
+// Custom gateway with extended timeouts and request logging for video generation
+let pollCount = 0
 const gateway = createGateway({
-  fetch: (url, init) =>
-    fetch(url, {
+  fetch: async (url, init) => {
+    pollCount++
+    const reqNum = pollCount
+    const ts = new Date().toISOString()
+    const method = (init as RequestInit)?.method || "GET"
+    const urlStr = typeof url === "string" ? url : (url as URL).toString()
+    
+    console.log(`[GenerateVideo] [${ts}] Gateway request #${reqNum}: ${method} ${urlStr.substring(0, 120)}`)
+    
+    const fetchStart = Date.now()
+    const response = await fetch(url, {
       ...init,
       dispatcher: new Agent({
         headersTimeout: 15 * 60 * 1000,
         bodyTimeout: 15 * 60 * 1000,
       }),
-    } as RequestInit),
+    } as RequestInit)
+    
+    const fetchTime = Date.now() - fetchStart
+    console.log(`[GenerateVideo] [${new Date().toISOString()}] Gateway response #${reqNum}: ${response.status} in ${fetchTime}ms (${(fetchTime / 1000).toFixed(1)}s)`)
+    
+    return response
+  },
 })
 
 export async function POST(request: NextRequest) {
@@ -39,7 +55,8 @@ export async function POST(request: NextRequest) {
 
   const { generationId, videoUrl, characterImageUrl, characterName, userEmail } = body
 
-  console.log(`[GenerateVideo] [${new Date().toISOString()}] Starting generation ${generationId} (maxDuration=800)`)
+  pollCount = 0
+  console.log(`[GenerateVideo] [${new Date().toISOString()}] Starting generation ${generationId} (maxDuration=800, no workflow)`)
 
   // Update run ID so UI knows it's processing
   await updateGenerationRunId(generationId, `direct-${generationId}`)
