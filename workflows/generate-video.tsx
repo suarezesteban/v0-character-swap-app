@@ -138,29 +138,39 @@ async function generateAndSaveVideo(
   const stepStartTime = Date.now()
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
-  const { experimental_generateVideo: generateVideo } = await import("ai")
+  const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
+  const { Agent } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Use the global gateway configured in instrumentation.ts with extended Undici timeouts
-  // KlingAI generation can take 5-12 minutes, global gateway has 15-minute timeouts configured
-  // @see instrumentation.ts for gateway configuration
-  console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
+  // Shaper's EXACT pattern for extended timeouts (from Slack conversation)
+  // KlingAI generation can take 5-12 minutes. Node.js default fetch uses Undici with 5-minute timeout.
+  // Must create gateway locally in step context (global gateway doesn't apply in workflow workers)
+  // @see https://vercel.com/docs/ai-gateway/capabilities/video-generation#extending-timeouts-for-node.js
+  const longTimeoutAgent = new Agent({
+    headersTimeout: 15 * 60 * 1000, // 15 minutes
+    bodyTimeout: 15 * 60 * 1000, // 15 minutes
+  })
+
+  const gateway = createGateway({
+    fetch: (url, init) =>
+      fetch(url, { ...init, dispatcher: longTimeoutAgent } as any),
+  })
+
+  console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done, gateway created with 15min timeouts (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
   // Update run ID with a placeholder so UI knows it's processing
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
   // Generate video using AI SDK with KlingAI motion control
-  // Uses global gateway from instrumentation.ts (with 15-min timeouts)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
   let result: Awaited<ReturnType<typeof generateVideo>>
   try {
     result = await generateVideo({
-      // Use string model ID - will use global gateway from instrumentation.ts
-      model: "klingai/kling-v2.6-motion-control",
+      model: gateway.video("klingai/kling-v2.6-motion-control"),
       prompt: {
         image: characterImageUrl,
       },
@@ -175,6 +185,7 @@ async function generateAndSaveVideo(
       },
     })
   } catch (error) {
+    const { FatalError } = await import("workflow")
     const elapsedMs = Date.now() - generateStart
     console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsedMs}ms (${(elapsedMs / 1000).toFixed(1)}s)`)
     console.error(`[Workflow Step] Error type: ${error?.constructor?.name}, message: ${error instanceof Error ? error.message : String(error)}`)
@@ -183,7 +194,8 @@ async function generateAndSaveVideo(
     }
     const details = await serializeUnknownError(error)
     const payload = buildProviderErrorPayload(details)
-    throw new Error(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
+    // Use FatalError to skip retries - provider errors won't be fixed by retrying
+    throw new FatalError(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
   }
 
   const generateTime = Date.now() - generateStart
