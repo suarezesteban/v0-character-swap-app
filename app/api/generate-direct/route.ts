@@ -87,9 +87,24 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        let errorMessage = "Unknown error"
+        if (error instanceof Error) {
+          errorMessage = `${error.message}${error.stack ? `\n${error.stack}` : ""}`
+        } else if (error && typeof error === "object") {
+          try {
+            errorMessage = JSON.stringify(error, null, 2)
+          } catch {
+            errorMessage = String(error)
+          }
+        } else {
+          errorMessage = String(error)
+        }
         console.error(`[GenerateDirect] Generation ${generationId} failed:`, error)
-        await updateGenerationFailed(generationId, errorMessage)
+        console.error(`[GenerateDirect] Error type:`, typeof error)
+        console.error(`[GenerateDirect] Error constructor:`, error?.constructor?.name)
+        await updateGenerationFailed(generationId, errorMessage).catch(dbErr => {
+          console.error(`[GenerateDirect] Failed to update DB with error:`, dbErr)
+        })
       }
     })
 
@@ -117,25 +132,33 @@ async function generateAndSaveVideoDirect(
   videoUrl: string,
   characterImageUrl: string,
 ): Promise<string> {
-  const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-  const { Agent } = await import("undici")
-  const { put } = await import("@vercel/blob")
+  try {
+    console.log(`[GenerateDirect] [${new Date().toISOString()}] generateAndSaveVideoDirect starting for generation ${generationId}`)
 
-  const stepStartTime = Date.now()
+    const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
+    const { Agent } = await import("undici")
+    const { put } = await import("@vercel/blob")
 
-  // Shaper's exact pattern: createGateway with custom fetch using Undici Agent
-  const longTimeoutAgent = new Agent({
-    headersTimeout: 15 * 60 * 1000, // 15 minutes
-    bodyTimeout: 15 * 60 * 1000, // 15 minutes
-  })
+    console.log(`[GenerateDirect] [${new Date().toISOString()}] Imports loaded successfully`)
 
-  const gateway = createGateway({
-    fetch: (url, init) =>
-      fetch(url, { ...init, dispatcher: longTimeoutAgent } as RequestInit),
-  })
+    const stepStartTime = Date.now()
 
-  console.log(`[GenerateDirect] [${new Date().toISOString()}] Setup done (+${Date.now() - stepStartTime}ms)`)
-  console.log(`[GenerateDirect] [${new Date().toISOString()}] characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
+    // Shaper's EXACT pattern for extended timeouts
+    // @see Slack conversation with Shaper (Vercel AI Gateway team)
+    const longTimeoutAgent = new Agent({
+      headersTimeout: 15 * 60 * 1000, // 15 minutes
+      bodyTimeout: 15 * 60 * 1000, // 15 minutes
+    })
+
+    console.log(`[GenerateDirect] [${new Date().toISOString()}] Agent created with 15min timeouts`)
+
+    const gateway = createGateway({
+      fetch: (url, init) =>
+        fetch(url, { ...init, dispatcher: longTimeoutAgent } as any),
+    })
+
+    console.log(`[GenerateDirect] [${new Date().toISOString()}] Setup done (+${Date.now() - stepStartTime}ms)`)
+    console.log(`[GenerateDirect] [${new Date().toISOString()}] characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
   // Generate video using AI SDK with KlingAI motion control
   console.log(`[GenerateDirect] [${new Date().toISOString()}] Calling experimental_generateVideo...`)
@@ -174,6 +197,12 @@ async function generateAndSaveVideoDirect(
     contentType: "video/mp4",
   })
 
-  console.log(`[GenerateDirect] [${new Date().toISOString()}] Saved to blob: ${blobUrl}, total time: ${Date.now() - stepStartTime}ms`)
-  return blobUrl
+    console.log(`[GenerateDirect] [${new Date().toISOString()}] Saved to blob: ${blobUrl}, total time: ${Date.now() - stepStartTime}ms`)
+    return blobUrl
+  } catch (error) {
+    console.error(`[GenerateDirect] Error in generateAndSaveVideoDirect:`, error)
+    console.error(`[GenerateDirect] Error type:`, typeof error)
+    console.error(`[GenerateDirect] Error constructor:`, error?.constructor?.name)
+    throw error
+  }
 }
