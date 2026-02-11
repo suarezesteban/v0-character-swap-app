@@ -139,14 +139,13 @@ async function generateAndSaveVideo(
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
   const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-  const { Agent } = await import("undici")
+  const { Agent, fetch: undiciFetch } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Shaper's EXACT pattern for extended timeouts (from Slack conversation)
-  // KlingAI generation can take 5-12 minutes. Node.js default fetch uses Undici with 5-minute timeout.
-  // Must create gateway locally in step context (global gateway doesn't apply in workflow workers)
-  // @see https://vercel.com/docs/ai-gateway/capabilities/video-generation#extending-timeouts-for-node.js
+  // Use undici.fetch directly instead of global fetch
+  // In Vercel, global fetch might be wrapped and ignore the dispatcher
+  // Using undici.fetch ensures the dispatcher is respected
   const longTimeoutAgent = new Agent({
     headersTimeout: 15 * 60 * 1000, // 15 minutes
     bodyTimeout: 15 * 60 * 1000, // 15 minutes
@@ -154,7 +153,7 @@ async function generateAndSaveVideo(
 
   const gateway = createGateway({
     fetch: (url, init) =>
-      fetch(url, { ...init, dispatcher: longTimeoutAgent } as any),
+      undiciFetch(url, { ...init, dispatcher: longTimeoutAgent }),
   })
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done, gateway created with 15min timeouts (+${Date.now() - stepStartTime}ms)`)

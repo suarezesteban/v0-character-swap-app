@@ -136,15 +136,15 @@ async function generateAndSaveVideoDirect(
     console.log(`[GenerateDirect] [${new Date().toISOString()}] generateAndSaveVideoDirect starting for generation ${generationId}`)
 
     const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-    const { Agent } = await import("undici")
+    const { Agent, fetch: undiciFetch } = await import("undici")
     const { put } = await import("@vercel/blob")
 
     console.log(`[GenerateDirect] [${new Date().toISOString()}] Imports loaded successfully`)
 
     const stepStartTime = Date.now()
 
-    // Shaper's EXACT pattern for extended timeouts
-    // @see Slack conversation with Shaper (Vercel AI Gateway team)
+    // Use undici.fetch directly instead of global fetch
+    // In Vercel, global fetch might be wrapped and ignore the dispatcher
     const longTimeoutAgent = new Agent({
       headersTimeout: 15 * 60 * 1000, // 15 minutes
       bodyTimeout: 15 * 60 * 1000, // 15 minutes
@@ -154,7 +154,7 @@ async function generateAndSaveVideoDirect(
 
     const gateway = createGateway({
       fetch: (url, init) =>
-        fetch(url, { ...init, dispatcher: longTimeoutAgent } as any),
+        undiciFetch(url, { ...init, dispatcher: longTimeoutAgent }),
     })
 
     console.log(`[GenerateDirect] [${new Date().toISOString()}] Setup done (+${Date.now() - stepStartTime}ms)`)
