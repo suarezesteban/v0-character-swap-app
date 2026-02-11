@@ -138,13 +138,27 @@ async function generateAndSaveVideo(
   const stepStartTime = Date.now()
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
-  const { experimental_generateVideo: generateVideo } = await import("ai")
-  const { createGateway } = await import("@ai-sdk/gateway")
+  const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
+  const { Agent } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Use default gateway - the step already has maxDuration=800 via vercel.json
-  const gateway = createGateway()
+  // Custom gateway with extended Undici timeouts for video generation.
+  // Node.js default fetch (via Undici) enforces a 5-minute timeout, but
+  // the AI Gateway keeps ONE long-running HTTP connection open while it
+  // polls KlingAI internally (5-12 min). Without this, the connection dies
+  // at the 5-minute mark.
+  // @see https://vercel.com/docs/ai-gateway/capabilities/video-generation#extending-timeouts-for-node.js
+  const gateway = createGateway({
+    fetch: (url, init) =>
+      fetch(url, {
+        ...init,
+        dispatcher: new Agent({
+          headersTimeout: 15 * 60 * 1000, // 15 minutes
+          bodyTimeout: 15 * 60 * 1000, // 15 minutes
+        }),
+      } as RequestInit),
+  })
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)

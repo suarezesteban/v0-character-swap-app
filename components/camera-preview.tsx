@@ -127,16 +127,15 @@ export function CameraPreview({ onVideoRecorded, isProcessing, progress, progres
     let mimeType: string
     
     // Find best supported type
-    // Safari with canvas: prefer WebM (canvas produces WebM frames)
-    // Chrome: prefer WebM for direct camera recording
+    // Prefer MP4 — KlingAI requires MP4 and modern Chrome supports it natively,
+    // avoiding the need for client-side FFmpeg transcoding
     const findSupportedType = () => {
-      // WebM first (better metadata handling), then MP4 as fallback
       const preferredOrder = [
+        "video/mp4",
+        "video/mp4;codecs=avc1",
         "video/webm;codecs=vp9",
         "video/webm;codecs=vp8",
         "video/webm",
-        "video/mp4",
-        "video/mp4;codecs=avc1",
       ]
       
       for (const type of preferredOrder) {
