@@ -139,25 +139,30 @@ async function generateAndSaveVideo(
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
   const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-  const { Agent } = await import("undici")
+  const { fetch: undiciFetch, Agent, setGlobalDispatcher } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Custom gateway with extended Undici timeouts for video generation.
-  // Node.js default fetch (via Undici) enforces a 5-minute timeout, but
-  // the AI Gateway keeps ONE long-running HTTP connection open while it
-  // polls KlingAI internally (5-12 min). Without this, the connection dies
-  // at the 5-minute mark.
+  // Extended Undici timeouts for video generation.
+  // KlingAI generation can take 5-12 minutes. Node.js default fetch (via Undici)
+  // enforces a 5-minute timeout. We extend it in two ways:
+  // 1. setGlobalDispatcher: ensures ALL fetch calls (including internal AI SDK calls) use extended timeouts
+  // 2. Explicit undici fetch: bypasses any runtime-level fetch overrides on Vercel
   // @see https://vercel.com/docs/ai-gateway/capabilities/video-generation#extending-timeouts-for-node.js
+  const longTimeoutAgent = new Agent({
+    headersTimeout: 15 * 60 * 1000, // 15 minutes
+    bodyTimeout: 15 * 60 * 1000, // 15 minutes
+  })
+
+  // Set globally so any internal AI SDK fetch calls also get extended timeouts
+  setGlobalDispatcher(longTimeoutAgent)
+
   const gateway = createGateway({
     fetch: (url, init) =>
-      fetch(url, {
+      undiciFetch(url as string, {
         ...init,
-        dispatcher: new Agent({
-          headersTimeout: 15 * 60 * 1000, // 15 minutes
-          bodyTimeout: 15 * 60 * 1000, // 15 minutes
-        }),
-      } as RequestInit),
+        dispatcher: longTimeoutAgent,
+      }) as unknown as Promise<Response>,
   })
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
@@ -188,6 +193,12 @@ async function generateAndSaveVideo(
       },
     })
   } catch (error) {
+    const elapsedMs = Date.now() - generateStart
+    console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsedMs}ms (${(elapsedMs / 1000).toFixed(1)}s)`)
+    console.error(`[Workflow Step] Error type: ${error?.constructor?.name}, message: ${error instanceof Error ? error.message : String(error)}`)
+    if (error && typeof error === "object" && "cause" in error) {
+      console.error(`[Workflow Step] Error cause:`, (error as { cause: unknown }).cause)
+    }
     const details = await serializeUnknownError(error)
     const payload = buildProviderErrorPayload(details)
     throw new Error(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
