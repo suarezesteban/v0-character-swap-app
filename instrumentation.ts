@@ -13,15 +13,18 @@ import { Agent } from "undici"
  *
  * @see https://vercel.com/docs/ai-gateway/capabilities/video-generation#extending-timeouts-for-node.js
  */
+// Create a single long-lived Agent instance (reused across all requests)
+const longTimeoutAgent = new Agent({
+  headersTimeout: 15 * 60 * 1000, // 15 minutes
+  bodyTimeout: 15 * 60 * 1000, // 15 minutes
+})
+
 export async function register() {
   globalThis.AI_SDK_DEFAULT_PROVIDER = createGateway({
     fetch: (url, init) =>
       fetch(url, {
         ...init,
-        dispatcher: new Agent({
-          headersTimeout: 15 * 60 * 1000, // 15 minutes
-          bodyTimeout: 15 * 60 * 1000, // 15 minutes
-        }),
-      } as RequestInit),
+        dispatcher: longTimeoutAgent, // Reuse the same agent
+      } as any),
   })
 }

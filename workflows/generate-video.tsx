@@ -138,33 +138,13 @@ async function generateAndSaveVideo(
   const stepStartTime = Date.now()
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
-  const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-  const { fetch: undiciFetch, Agent, setGlobalDispatcher } = await import("undici")
+  const { experimental_generateVideo: generateVideo } = await import("ai")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Extended Undici timeouts for video generation.
-  // KlingAI generation can take 5-12 minutes. Node.js default fetch (via Undici)
-  // enforces a 5-minute timeout. We extend it in two ways:
-  // 1. setGlobalDispatcher: ensures ALL fetch calls (including internal AI SDK calls) use extended timeouts
-  // 2. Explicit undici fetch: bypasses any runtime-level fetch overrides on Vercel
-  // @see https://vercel.com/docs/ai-gateway/capabilities/video-generation#extending-timeouts-for-node.js
-  const longTimeoutAgent = new Agent({
-    headersTimeout: 15 * 60 * 1000, // 15 minutes
-    bodyTimeout: 15 * 60 * 1000, // 15 minutes
-  })
-
-  // Set globally so any internal AI SDK fetch calls also get extended timeouts
-  setGlobalDispatcher(longTimeoutAgent)
-
-  const gateway = createGateway({
-    fetch: (url, init) =>
-      undiciFetch(url as string, {
-        ...init,
-        dispatcher: longTimeoutAgent,
-      }) as unknown as Promise<Response>,
-  })
-
+  // Use the global gateway configured in instrumentation.ts with extended Undici timeouts
+  // KlingAI generation can take 5-12 minutes, global gateway has 15-minute timeouts configured
+  // @see instrumentation.ts for gateway configuration
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done (+${Date.now() - stepStartTime}ms)`)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Input: characterImageUrl=${characterImageUrl}, videoUrl=${videoUrl}`)
 
@@ -172,13 +152,15 @@ async function generateAndSaveVideo(
   await updateGenerationRunId(generationId, `ai-gateway-${generationId}`)
 
   // Generate video using AI SDK with KlingAI motion control
+  // Uses global gateway from instrumentation.ts (with 15-min timeouts)
   console.log(`[Workflow Step] [${new Date().toISOString()}] Calling experimental_generateVideo with klingai/kling-v2.6-motion-control...`)
 
   const generateStart = Date.now()
   let result: Awaited<ReturnType<typeof generateVideo>>
   try {
     result = await generateVideo({
-      model: gateway.video("klingai/kling-v2.6-motion-control"),
+      // Use string model ID - will use global gateway from instrumentation.ts
+      model: "klingai/kling-v2.6-motion-control",
       prompt: {
         image: characterImageUrl,
       },
