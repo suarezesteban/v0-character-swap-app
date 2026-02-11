@@ -141,7 +141,7 @@ export function useVideoGeneration({
         })
 
         // 6. Start actual generation
-        const startResponse = await fetch("/api/generate", {
+        const startResponse = await fetch("/api/generate-direct", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -5,6 +5,9 @@
     },
     "app/.well-known/workflow/v1/flow/route.js": {
       "maxDuration": 800
+    },
+    "app/api/generate-direct/route.js": {
+      "maxDuration": 800
     }
   }
 }
