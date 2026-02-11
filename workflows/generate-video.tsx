@@ -175,6 +175,7 @@ async function generateAndSaveVideo(
       },
     })
   } catch (error) {
+    const { FatalError } = await import("workflow")
     const elapsedMs = Date.now() - generateStart
     console.error(`[Workflow Step] [${new Date().toISOString()}] generateVideo FAILED after ${elapsedMs}ms (${(elapsedMs / 1000).toFixed(1)}s)`)
     console.error(`[Workflow Step] Error type: ${error?.constructor?.name}, message: ${error instanceof Error ? error.message : String(error)}`)
@@ -183,7 +184,9 @@ async function generateAndSaveVideo(
     }
     const details = await serializeUnknownError(error)
     const payload = buildProviderErrorPayload(details)
-    throw new Error(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
+    // Use FatalError to skip retries - provider errors (invalid format, internal server error)
+    // won't be fixed by retrying the same request
+    throw new FatalError(`${PROVIDER_ERROR_PREFIX}${JSON.stringify(payload)}`)
   }
 
   const generateTime = Date.now() - generateStart
