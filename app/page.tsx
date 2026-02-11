@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import Image from "next/image"
 import { CameraPreview } from "@/components/camera-preview"
-import { CharacterGrid, defaultCharacters } from "@/components/character-grid"
+import { CharacterGrid, DEFAULT_CHARACTERS } from "@/components/character-grid"
 import { useAuth } from "@/components/auth-provider"
 import { BottomSheet } from "@/components/bottom-sheet"
 import { useIsMobile } from "@/hooks/use-mobile"

@@ -41,9 +41,6 @@ export const DEFAULT_CHARACTERS: Character[] = [
   { id: 8, src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/nano-banana-pro-image-editing-result%20%2850%29-MKnUP5YDwDFujPEfusSQ5edL6x815s.png", name: "Einstein", category: "celebs" },
 ]
 
-// Alias for backwards compatibility
-export const defaultCharacters = DEFAULT_CHARACTERS
-
 // ===========================================
 // Storage Keys
 // ===========================================

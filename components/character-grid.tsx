@@ -5,10 +5,9 @@ import Image from "next/image"
 import { cn, detectImageAspectRatio } from "@/lib/utils"
 import { upload } from "@vercel/blob/client"
 import type { Character, CharacterCategory } from "@/lib/types"
-import { defaultCharacters, CHARACTER_CATEGORIES } from "@/lib/constants"
+import { DEFAULT_CHARACTERS, CHARACTER_CATEGORIES } from "@/lib/constants"
 
-// Re-export for backwards compatibility
-export { defaultCharacters }
+export { DEFAULT_CHARACTERS }
 export type { Character }
 
 interface CharacterGridProps {
@@ -63,7 +62,7 @@ export function CharacterGrid({
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [showHowItWorks, setShowHowItWorks] = useState(false)
   
-  const visibleDefaultCharacters = defaultCharacters.filter(c => !hiddenDefaultIds.includes(c.id))
+  const visibleDefaultCharacters = DEFAULT_CHARACTERS.filter(c => !hiddenDefaultIds.includes(c.id))
   const allCharacters = [...visibleDefaultCharacters, ...customCharacters]
   
   // Use external filtered characters if provided, otherwise use all
@@ -77,11 +76,10 @@ export function CharacterGrid({
     displayCharacters.forEach(async (char) => {
       if (!aspectRatios[char.id] && char.src) {
         const ar = await detectImageAspectRatio(char.src)
-        console.log("[v0] Detected aspect ratio for", char.name, char.id, ":", ar)
         setAspectRatios(prev => ({ ...prev, [char.id]: ar }))
       }
     })
-  }, [displayCharacters, aspectRatios])
+  }, [displayCharacters]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
