@@ -139,21 +139,24 @@ async function generateAndSaveVideo(
   console.log(`[Workflow Step] [${new Date().toISOString()}] generateAndSaveVideo starting...`)
 
   const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-  const { Agent, fetch: undiciFetch } = await import("undici")
+  const { Agent, setGlobalDispatcher } = await import("undici")
   const { put } = await import("@vercel/blob")
   const { updateGenerationRunId } = await import("@/lib/db")
 
-  // Use undici.fetch directly instead of global fetch
-  // In Vercel, global fetch might be wrapped and ignore the dispatcher
-  // Using undici.fetch ensures the dispatcher is respected
+  // Set global dispatcher for this step execution context
+  // This affects all fetch calls in this step, including AI SDK's internal calls
   const longTimeoutAgent = new Agent({
     headersTimeout: 15 * 60 * 1000, // 15 minutes
     bodyTimeout: 15 * 60 * 1000, // 15 minutes
+    connectTimeout: 2 * 60 * 1000, // 2 minutes to establish connection
+    keepAliveTimeout: 15 * 60 * 1000,
+    keepAliveMaxTimeout: 15 * 60 * 1000,
   })
 
+  setGlobalDispatcher(longTimeoutAgent)
+
   const gateway = createGateway({
-    fetch: (url, init) =>
-      undiciFetch(url, { ...init, dispatcher: longTimeoutAgent }),
+    fetch: fetch, // use global fetch (now with extended timeouts from dispatcher)
   })
 
   console.log(`[Workflow Step] [${new Date().toISOString()}] Imports done, gateway created with 15min timeouts (+${Date.now() - stepStartTime}ms)`)

@@ -136,25 +136,28 @@ async function generateAndSaveVideoDirect(
     console.log(`[GenerateDirect] [${new Date().toISOString()}] generateAndSaveVideoDirect starting for generation ${generationId}`)
 
     const { experimental_generateVideo: generateVideo, createGateway } = await import("ai")
-    const { Agent, fetch: undiciFetch } = await import("undici")
+    const { Agent, setGlobalDispatcher } = await import("undici")
     const { put } = await import("@vercel/blob")
 
     console.log(`[GenerateDirect] [${new Date().toISOString()}] Imports loaded successfully`)
 
     const stepStartTime = Date.now()
 
-    // Use undici.fetch directly instead of global fetch
-    // In Vercel, global fetch might be wrapped and ignore the dispatcher
+    // Set global dispatcher for extended timeouts
     const longTimeoutAgent = new Agent({
       headersTimeout: 15 * 60 * 1000, // 15 minutes
       bodyTimeout: 15 * 60 * 1000, // 15 minutes
+      connectTimeout: 2 * 60 * 1000, // 2 minutes to establish connection
+      keepAliveTimeout: 15 * 60 * 1000,
+      keepAliveMaxTimeout: 15 * 60 * 1000,
     })
+
+    setGlobalDispatcher(longTimeoutAgent)
 
     console.log(`[GenerateDirect] [${new Date().toISOString()}] Agent created with 15min timeouts`)
 
     const gateway = createGateway({
-      fetch: (url, init) =>
-        undiciFetch(url, { ...init, dispatcher: longTimeoutAgent }),
+      fetch: fetch,
     })
 
     console.log(`[GenerateDirect] [${new Date().toISOString()}] Setup done (+${Date.now() - stepStartTime}ms)`)
